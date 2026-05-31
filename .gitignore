@@ -2,6 +2,7 @@ node_modules
 dist
 dist-ssr
 *.local
+*.tsbuildinfo
 .vscode/*
 !.vscode/settings.json
 !.vscode/launch.json

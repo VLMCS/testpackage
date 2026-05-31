@@ -1,5 +1,11 @@
 import { initializeApp, type FirebaseApp } from 'firebase/app';
-import { getFirestore, type Firestore } from 'firebase/firestore';
+import {
+  getFirestore,
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+  type Firestore,
+} from 'firebase/firestore';
 import { getAuth, type Auth } from 'firebase/auth';
 
 // ============================================================
@@ -30,7 +36,16 @@ export function getFirebase() {
   }
   if (!appInstance) {
     appInstance = initializeApp(FIREBASE_CONFIG);
-    dbInstance = getFirestore(appInstance);
+    try {
+      // Offline-first: cache data in IndexedDB so the PWA works without a network
+      // and stays consistent across multiple open tabs.
+      dbInstance = initializeFirestore(appInstance, {
+        localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+      });
+    } catch {
+      // IndexedDB unavailable (e.g. private browsing) — fall back to in-memory cache.
+      dbInstance = getFirestore(appInstance);
+    }
     authInstance = getAuth(appInstance);
   }
   return { app: appInstance!, db: dbInstance!, auth: authInstance! };

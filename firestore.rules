@@ -1,42 +1,59 @@
 rules_version = '2';
 
-// Paste these into Firebase Console → Firestore Database → Rules.
-// They allow read/write only to anonymous UIDs that have been paired into the workspace.
-// Phase 2 wires the workspace creation + pairing flow.
+// Paste into Firebase Console → Firestore Database → Rules → Publish.
+//
+// Security model: the workspace document ID is derived from the shared passphrase
+// (PBKDF2, see src/lib/crypto.ts). Listing the workspaces collection is forbidden,
+// so the only way to address a workspace doc is to know its passphrase. Once a
+// device's anonymous UID is in `allowedUids`, it can read/write all nested data.
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    function isPairedToWorkspace(workspaceId) {
-      return request.auth != null
-        && exists(/databases/$(database)/documents/workspaces/$(workspaceId))
-        && request.auth.uid in get(/databases/$(database)/documents/workspaces/$(workspaceId)).data.allowedUids;
+
+    function workspaceData(wid) {
+      return get(/databases/$(database)/documents/workspaces/$(wid)).data;
     }
 
-    // Workspace doc is readable by anyone signed in (so they can attempt to pair),
-    // but only writable by paired members. Pairing flow uses a transactional
-    // update that verifies the passphrase hash before adding a UID.
-    match /workspaces/{workspaceId} {
-      allow read: if request.auth != null;
+    function isMember(wid) {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/workspaces/$(wid))
+        && request.auth.uid in workspaceData(wid).allowedUids;
+    }
+
+    match /workspaces/{wid} {
+      // Knowing the (secret, passphrase-derived) ID is proof of access.
+      allow get: if request.auth != null;
+      // Never allow enumeration — that would let anyone discover workspaces.
+      allow list: if false;
+
+      // First device creates the workspace with exactly itself in the allowlist.
       allow create: if request.auth != null
+        && request.resource.data.allowedUids is list
         && request.resource.data.allowedUids.size() == 1
         && request.auth.uid in request.resource.data.allowedUids;
-      allow update: if isPairedToWorkspace(workspaceId)
-        || (
-          // Allow a new user to add their UID after passphrase check (client verifies).
-          request.auth != null
+
+      allow update: if request.auth != null && (
+        // Existing member: full update (e.g. change base currency in Settings).
+        request.auth.uid in resource.data.allowedUids
+        ||
+        // New device pairing in: may ONLY append itself; nothing else may change.
+        (
+          !(request.auth.uid in resource.data.allowedUids)
+          && request.resource.data.allowedUids.hasAll(resource.data.allowedUids)
           && request.resource.data.allowedUids.size() == resource.data.allowedUids.size() + 1
           && request.auth.uid in request.resource.data.allowedUids
-        );
+          && request.resource.data.baseCurrency == resource.data.baseCurrency
+          && request.resource.data.createdAt == resource.data.createdAt
+        )
+      );
+
       allow delete: if false;
-    }
 
-    // All nested data is gated on workspace membership.
-    match /workspaces/{workspaceId}/{collection}/{docId} {
-      allow read, write: if isPairedToWorkspace(workspaceId);
-    }
-
-    match /workspaces/{workspaceId}/{collection}/{docId}/{subcollection}/{subDocId} {
-      allow read, write: if isPairedToWorkspace(workspaceId);
+      // All nested data (accounts, categories, transactions, recurring, …):
+      // members only.
+      match /{document=**} {
+        allow read, write: if isMember(wid);
+      }
     }
   }
 }

@@ -10,13 +10,14 @@ export type Account = {
   createdAt: number;
 };
 
+// Stored at /workspaces/{workspaceId}. The doc ID is derived from the shared
+// passphrase via PBKDF2, so knowing the ID is itself proof of the passphrase —
+// that's what gates access (see src/lib/crypto.ts). No passphrase hash is stored.
 export type Workspace = {
-  id: string;
-  passphraseHash: string;
-  passphraseSalt: string;
   baseCurrency: string;
   allowedUids: string[];
   createdAt: number;
+  schemaVersion: number;
 };
 
 export type CategoryType = 'income' | 'expense' | 'recurring';
