@@ -1,7 +1,7 @@
-import { Home, LayoutGrid, Plus, ReceiptText, UserRound } from 'lucide-react';
+import { Home, LayoutGrid, Plus, ReceiptText, Repeat } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export type Tab = 'home' | 'transactions' | 'categories' | 'profile';
+export type Tab = 'home' | 'activity' | 'recurring' | 'categories' | 'profile';
 
 export function BottomNav({
   active,
@@ -25,8 +25,8 @@ export function BottomNav({
           label="Home"
         />
         <NavButton
-          active={active === 'transactions'}
-          onClick={() => onChange('transactions')}
+          active={active === 'activity'}
+          onClick={() => onChange('activity')}
           icon={<ReceiptText className="h-5 w-5" />}
           label="Activity"
         />
@@ -39,16 +39,16 @@ export function BottomNav({
           <Plus className="h-6 w-6" />
         </button>
         <NavButton
+          active={active === 'recurring'}
+          onClick={() => onChange('recurring')}
+          icon={<Repeat className="h-5 w-5" />}
+          label="Recurring"
+        />
+        <NavButton
           active={active === 'categories'}
           onClick={() => onChange('categories')}
           icon={<LayoutGrid className="h-5 w-5" />}
           label="Categories"
-        />
-        <NavButton
-          active={active === 'profile'}
-          onClick={() => onChange('profile')}
-          icon={<UserRound className="h-5 w-5" />}
-          label="Profile"
         />
       </div>
     </nav>

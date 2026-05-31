@@ -44,22 +44,21 @@ export type Transaction = {
   note: string;
   createdAt: number;
   createdBy: AccountId;
+  // Set when this expense was materialized by ticking a recurring bill. Lets the
+  // Recurring tab know which template/month a transaction belongs to (and undo it).
+  recurringTemplateId?: string | null;
+  recurringMonth?: string | null; // 'yyyy-MM'
 };
 
+// A recurring bill definition (rent, Netflix, …) owned by one account. Each month
+// it appears in the Recurring checklist unchecked; ticking it creates an expense
+// transaction for that month (categorized under the special Recurring category).
 export type RecurringTemplate = {
   id: string;
   accountId: AccountId;
-  categoryId: string;
   name: string;
   amountCents: number;
   note: string;
   active: boolean;
   createdAt: number;
-};
-
-export type RecurringInstance = {
-  templateId: string;
-  yearMonth: string;
-  checked: boolean;
-  checkedAt: number | null;
 };
