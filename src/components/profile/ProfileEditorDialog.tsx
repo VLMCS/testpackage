@@ -42,21 +42,20 @@ export function ProfileEditorDialog({
     setBusy(false);
   }, [open, account]);
 
-  async function save() {
+  function save() {
+    if (busy) return;
     const trimmed = name.trim();
     if (!trimmed) {
       setErr('Name is required.');
       return;
     }
-    setBusy(true);
     setErr(null);
-    try {
-      await updateAccountProfile(workspaceId, account.id, { name: trimmed, color, avatar });
-      onOpenChange(false);
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Could not save.');
-      setBusy(false);
-    }
+    setBusy(true);
+    // Offline-first: issue the write without awaiting (see AddTransactionDialog).
+    updateAccountProfile(workspaceId, account.id, { name: trimmed, color, avatar }).catch((e) =>
+      console.error('Profile will sync on reconnect:', e),
+    );
+    onOpenChange(false);
   }
 
   return (

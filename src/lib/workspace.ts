@@ -119,7 +119,10 @@ export async function createAccount(
       excludeFromTop: false,
     });
   }
-  await batch.commit();
+  // Offline-first: don't await the commit. The doc id is generated client-side,
+  // and the batch applies to the local cache immediately, so the new account is
+  // usable right away and syncs to the server on reconnect.
+  batch.commit().catch((e) => console.error('Account creation will sync on reconnect:', e));
   return accRef.id;
 }
 

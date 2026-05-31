@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useSession } from '@/hooks/useSession';
 import { useTheme } from '@/hooks/useTheme';
 import { updateAccountProfile } from '@/lib/workspace';
@@ -8,25 +7,22 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import type { ThemeMode } from '@/lib/themeMode';
-import { ArrowLeft, Loader2, Monitor, Moon, Sun } from 'lucide-react';
+import { ArrowLeft, Monitor, Moon, Sun } from 'lucide-react';
 
 export function SettingsScreen({ onBack }: { onBack: () => void }) {
   const { activeAccount, baseCurrency, workspaceId } = useSession();
   const { theme, setTheme } = useTheme();
-  const [saving, setSaving] = useState(false);
 
   if (!workspaceId || !activeAccount) return null;
   const wsId = workspaceId;
   const accId = activeAccount.id;
 
-  async function changeCurrency(code: string) {
+  function changeCurrency(code: string) {
     if (code === baseCurrency) return;
-    setSaving(true);
-    try {
-      await updateAccountProfile(wsId, accId, { baseCurrency: code });
-    } finally {
-      setSaving(false);
-    }
+    // Offline-first: issue the write without awaiting; it syncs on reconnect.
+    updateAccountProfile(wsId, accId, { baseCurrency: code }).catch((e) =>
+      console.error('Currency change will sync on reconnect:', e),
+    );
   }
 
   const themeOptions: { value: ThemeMode; label: string; icon: typeof Sun }[] = [
@@ -47,12 +43,11 @@ export function SettingsScreen({ onBack }: { onBack: () => void }) {
       <div className="space-y-2">
         <Label htmlFor="currency">Base currency</Label>
         <Card>
-          <CardContent className="flex items-center gap-3 py-3">
+          <CardContent className="py-3">
             <select
               id="currency"
               value={baseCurrency}
               onChange={(e) => changeCurrency(e.target.value)}
-              disabled={saving}
               className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               {CURRENCIES.map((c) => (
@@ -61,7 +56,6 @@ export function SettingsScreen({ onBack }: { onBack: () => void }) {
                 </option>
               ))}
             </select>
-            {saving && <Loader2 className="h-4 w-4 shrink-0 animate-spin text-muted-foreground" />}
           </CardContent>
         </Card>
         <p className="px-1 text-xs text-muted-foreground">

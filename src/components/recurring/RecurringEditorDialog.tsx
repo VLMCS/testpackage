@@ -67,7 +67,8 @@ export function RecurringEditorDialog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, editing]);
 
-  async function save() {
+  function save() {
+    if (busy) return;
     const trimmed = name.trim();
     if (!trimmed) {
       setErr('Give the bill a name.');
@@ -82,18 +83,17 @@ export function RecurringEditorDialog({
       setErr('Pick a category for this bill.');
       return;
     }
-    setBusy(true);
     setErr(null);
-    try {
-      if (editing) {
-        await updateTemplate(workspaceId, editing.id, {
+    setBusy(true);
+    // Offline-first: issue the write without awaiting (see AddTransactionDialog).
+    const op = editing
+      ? updateTemplate(workspaceId, editing.id, {
           name: trimmed,
           amountCents: cents,
           note: note.trim(),
           categoryId: categoryId || fallbackCategoryId,
-        });
-      } else {
-        await addTemplate(workspaceId, {
+        })
+      : addTemplate(workspaceId, {
           accountId,
           name: trimmed,
           amountCents: cents,
@@ -102,24 +102,17 @@ export function RecurringEditorDialog({
           active: true,
           createdAt: Date.now(),
         });
-      }
-      onOpenChange(false);
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Could not save.');
-      setBusy(false);
-    }
+    op.catch((e) => console.error('Recurring bill will sync on reconnect:', e));
+    onOpenChange(false);
   }
 
-  async function remove() {
-    if (!editing) return;
+  function remove() {
+    if (busy || !editing) return;
     setBusy(true);
-    try {
-      await deleteTemplate(workspaceId, editing.id);
-      onOpenChange(false);
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Could not delete.');
-      setBusy(false);
-    }
+    deleteTemplate(workspaceId, editing.id).catch((e) =>
+      console.error('Delete will sync on reconnect:', e),
+    );
+    onOpenChange(false);
   }
 
   return (

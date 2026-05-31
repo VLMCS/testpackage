@@ -72,26 +72,26 @@ export function CategoryEditorDialog({
   const isRecurring = type === 'recurring';
   const showTopToggle = type !== 'income'; // only expense + recurring appear in spending
 
-  async function save() {
+  function save() {
+    if (busy) return;
     const trimmed = name.trim();
     if (!trimmed) {
       setErr('Give the category a name.');
       return;
     }
-    setBusy(true);
     setErr(null);
-    try {
-      if (editing) {
-        await updateCategory(workspaceId, editing.id, {
+    setBusy(true);
+    // Offline-first: issue the write without awaiting (see AddTransactionDialog).
+    const op = editing
+      ? updateCategory(workspaceId, editing.id, {
           name: trimmed,
           type,
           color,
           icon,
           imageUrl,
           excludeFromTop,
-        });
-      } else {
-        await addCategory(workspaceId, {
+        })
+      : addCategory(workspaceId, {
           accountId,
           name: trimmed,
           type,
@@ -102,24 +102,17 @@ export function CategoryEditorDialog({
           sortOrder: 100,
           excludeFromTop,
         });
-      }
-      onOpenChange(false);
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Could not save.');
-      setBusy(false);
-    }
+    op.catch((e) => console.error('Category will sync on reconnect:', e));
+    onOpenChange(false);
   }
 
-  async function remove() {
-    if (!editing) return;
+  function remove() {
+    if (busy || !editing) return;
     setBusy(true);
-    try {
-      await deleteCategory(workspaceId, editing.id);
-      onOpenChange(false);
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Could not delete.');
-      setBusy(false);
-    }
+    deleteCategory(workspaceId, editing.id).catch((e) =>
+      console.error('Delete will sync on reconnect:', e),
+    );
+    onOpenChange(false);
   }
 
   return (

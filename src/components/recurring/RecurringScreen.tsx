@@ -18,7 +18,6 @@ export function RecurringScreen() {
   const [month, setMonth] = useState(currentMonthKey());
   const [editing, setEditing] = useState<RecurringTemplate | null>(null);
   const [adding, setAdding] = useState(false);
-  const [busyId, setBusyId] = useState<string | null>(null);
 
   const accId = activeAccount?.id ?? '';
   const myCats = useMemo(() => categories.filter((c) => c.accountId === accId), [categories, accId]);
@@ -48,18 +47,14 @@ export function RecurringScreen() {
   const totalCents = mine.reduce((sum, t) => sum + t.amountCents, 0);
   const checkedCount = mine.filter((t) => checkedTxn[t.id]).length;
 
-  async function toggle(t: RecurringTemplate) {
-    if (busyId) return;
+  function toggle(t: RecurringTemplate) {
     const existing = checkedTxn[t.id];
 
     // Unticking never needs a category — just remove the expense.
     if (existing) {
-      setBusyId(t.id);
-      try {
-        await deleteTransaction(wsId, existing);
-      } finally {
-        setBusyId(null);
-      }
+      deleteTransaction(wsId, existing).catch((e) =>
+        console.error('Recurring change will sync on reconnect:', e),
+      );
       return;
     }
 
@@ -73,23 +68,20 @@ export function RecurringScreen() {
       setEditing(t);
       return;
     }
-    setBusyId(t.id);
-    try {
-      await addTransaction(wsId, {
-        accountId: account.id,
-        categoryId: t.categoryId,
-        type: 'expense',
-        amountCents: t.amountCents,
-        date: `${month}-01`,
-        note: t.name,
-        createdAt: Date.now(),
-        createdBy: account.id,
-        recurringTemplateId: t.id,
-        recurringMonth: month,
-      });
-    } finally {
-      setBusyId(null);
-    }
+    // Offline-first: don't await — the local cache flips the checkbox instantly
+    // (via the snapshot) and syncs when back online.
+    addTransaction(wsId, {
+      accountId: account.id,
+      categoryId: t.categoryId,
+      type: 'expense',
+      amountCents: t.amountCents,
+      date: `${month}-01`,
+      note: t.name,
+      createdAt: Date.now(),
+      createdBy: account.id,
+      recurringTemplateId: t.id,
+      recurringMonth: month,
+    }).catch((e) => console.error('Recurring change will sync on reconnect:', e));
   }
 
   return (
@@ -154,7 +146,7 @@ export function RecurringScreen() {
               <div key={t.id} className="flex items-center gap-3 p-3">
                 <Checkbox
                   checked={checked}
-                  disabled={busyId === t.id || (needsCategory && !checked)}
+                  disabled={needsCategory && !checked}
                   onCheckedChange={() => toggle(t)}
                   aria-label={`Mark ${t.name} as paid`}
                 />

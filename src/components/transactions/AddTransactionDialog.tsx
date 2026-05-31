@@ -71,7 +71,8 @@ export function AddTransactionDialog({
     });
   }
 
-  async function save() {
+  function save() {
+    if (busy) return;
     const cents = parseAmountToCents(amount);
     if (cents === null || cents <= 0) {
       setErr('Enter an amount greater than 0.');
@@ -81,19 +82,20 @@ export function AddTransactionDialog({
       setErr('Pick a category.');
       return;
     }
-    setBusy(true);
     setErr(null);
-    try {
-      if (editing) {
-        await updateTransaction(workspaceId, editing.id, {
+    setBusy(true);
+    // Offline-first: don't await the write — Firestore applies it to the local
+    // cache immediately and syncs when back online (the promise stays pending
+    // offline). Close right away; errors (rare) just log + retry on reconnect.
+    const op = editing
+      ? updateTransaction(workspaceId, editing.id, {
           type,
           categoryId,
           amountCents: cents,
           date,
           note: note.trim(),
-        });
-      } else {
-        await addTransaction(workspaceId, {
+        })
+      : addTransaction(workspaceId, {
           accountId,
           categoryId,
           type,
@@ -103,24 +105,17 @@ export function AddTransactionDialog({
           createdAt: Date.now(),
           createdBy: accountId,
         });
-      }
-      onOpenChange(false);
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Could not save.');
-      setBusy(false);
-    }
+    op.catch((e) => console.error('Transaction will sync on reconnect:', e));
+    onOpenChange(false);
   }
 
-  async function remove() {
-    if (!editing) return;
+  function remove() {
+    if (busy || !editing) return;
     setBusy(true);
-    try {
-      await deleteTransaction(workspaceId, editing.id);
-      onOpenChange(false);
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Could not delete.');
-      setBusy(false);
-    }
+    deleteTransaction(workspaceId, editing.id).catch((e) =>
+      console.error('Delete will sync on reconnect:', e),
+    );
+    onOpenChange(false);
   }
 
   return (
