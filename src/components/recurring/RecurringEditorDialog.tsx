@@ -9,9 +9,11 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { CategoryGrid } from '@/components/categories/CategoryGrid';
+import { CategoryCard } from '@/components/categories/CategoryCard';
 import { addTemplate, updateTemplate, deleteTemplate } from '@/lib/recurring';
 import { parseAmountToCents } from '@/lib/money';
-import type { AccountId, RecurringTemplate } from '@/types';
+import type { AccountId, Category, RecurringTemplate } from '@/types';
 import { Loader2, Trash2 } from 'lucide-react';
 
 export function RecurringEditorDialog({
@@ -20,6 +22,7 @@ export function RecurringEditorDialog({
   workspaceId,
   accountId,
   baseCurrency,
+  categories,
   editing,
 }: {
   open: boolean;
@@ -27,11 +30,18 @@ export function RecurringEditorDialog({
   workspaceId: string;
   accountId: AccountId;
   baseCurrency: string;
+  categories: Category[];
   editing: RecurringTemplate | null;
 }) {
+  // A bill can be filed under any expense category, or the generic Recurring one.
+  const selectable = categories.filter((c) => c.type === 'expense' || c.type === 'recurring');
+  const fallbackCategoryId =
+    selectable.find((c) => c.type === 'recurring')?.id ?? selectable[0]?.id ?? '';
+
   const [name, setName] = useState('');
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
+  const [categoryId, setCategoryId] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -41,12 +51,16 @@ export function RecurringEditorDialog({
       setName(editing.name);
       setAmount((editing.amountCents / 100).toString());
       setNote(editing.note);
+      setCategoryId(editing.categoryId ?? fallbackCategoryId);
     } else {
       setName('');
       setAmount('');
       setNote('');
+      setCategoryId(fallbackCategoryId);
     }
     setErr(null);
+    // fallbackCategoryId is derived from categories; intentionally not a dep.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, editing]);
 
   async function save() {
@@ -68,6 +82,7 @@ export function RecurringEditorDialog({
           name: trimmed,
           amountCents: cents,
           note: note.trim(),
+          categoryId: categoryId || fallbackCategoryId,
         });
       } else {
         await addTemplate(workspaceId, {
@@ -75,6 +90,7 @@ export function RecurringEditorDialog({
           name: trimmed,
           amountCents: cents,
           note: note.trim(),
+          categoryId: categoryId || fallbackCategoryId,
           active: true,
           createdAt: Date.now(),
         });
@@ -114,7 +130,7 @@ export function RecurringEditorDialog({
             id="rec-name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. Rent, Netflix"
+            placeholder="e.g. Electricity, Netflix"
           />
         </div>
 
@@ -127,6 +143,26 @@ export function RecurringEditorDialog({
             onChange={(e) => setAmount(e.target.value)}
             placeholder="0.00"
           />
+        </div>
+
+        <div className="space-y-2">
+          <Label>Category</Label>
+          <p className="text-xs text-muted-foreground">
+            When ticked, this bill is recorded under this category (so it shows in that category's
+            spending and analytics).
+          </p>
+          <div className="max-h-44 overflow-y-auto pr-1">
+            <CategoryGrid>
+              {selectable.map((c) => (
+                <CategoryCard
+                  key={c.id}
+                  category={c}
+                  selected={categoryId === c.id}
+                  onClick={() => setCategoryId(c.id)}
+                />
+              ))}
+            </CategoryGrid>
+          </div>
         </div>
 
         <div className="space-y-2">

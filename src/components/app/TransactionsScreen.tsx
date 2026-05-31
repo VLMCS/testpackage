@@ -4,10 +4,18 @@ import { useData } from '@/hooks/useData';
 import { TransactionList } from '@/components/transactions/TransactionList';
 import { AddTransactionDialog } from '@/components/transactions/AddTransactionDialog';
 import { ActivityCalendar, type DaySelection } from '@/components/transactions/ActivityCalendar';
+import { CategoryGrid } from '@/components/categories/CategoryGrid';
+import { CategoryCard } from '@/components/categories/CategoryCard';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
 import { currentMonthKey, friendlyDate } from '@/lib/date';
-import { CalendarDays, X } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { CalendarDays, ListFilter, X } from 'lucide-react';
 import type { Transaction } from '@/types';
 
 export function TransactionsScreen() {
@@ -17,54 +25,74 @@ export function TransactionsScreen() {
   const [calOpen, setCalOpen] = useState(false);
   const [calMonth, setCalMonth] = useState(currentMonthKey());
   const [selection, setSelection] = useState<DaySelection>({ start: null, end: null });
+  const [catFilter, setCatFilter] = useState<Set<string>>(new Set());
+  const [filterOpen, setFilterOpen] = useState(false);
 
   const accId = activeAccount?.id ?? '';
 
-  // Only ever this profile's own transactions.
   const own = useMemo(
     () => transactions.filter((t) => t.accountId === accId),
     [transactions, accId],
   );
 
   const visible = useMemo(() => {
+    let list = own;
     const { start, end } = selection;
-    if (start && end) return own.filter((t) => t.date >= start && t.date <= end);
-    if (start) return own.filter((t) => t.date === start);
-    return own;
-  }, [own, selection]);
+    if (start && end) list = list.filter((t) => t.date >= start && t.date <= end);
+    else if (start) list = list.filter((t) => t.date === start);
+    if (catFilter.size > 0) list = list.filter((t) => catFilter.has(t.categoryId));
+    return list;
+  }, [own, selection, catFilter]);
 
   if (!activeAccount || !workspaceId) return null;
 
   function handleSelectDay(iso: string) {
     setSelection((sel) => {
-      if (!sel.start || sel.end) return { start: iso, end: null }; // begin a new selection
-      if (iso <= sel.start) return { start: iso, end: null }; // restart at/before current start
-      return { start: sel.start, end: iso }; // complete the range
+      if (!sel.start || sel.end) return { start: iso, end: null };
+      if (iso <= sel.start) return { start: iso, end: null };
+      return { start: sel.start, end: iso };
     });
   }
 
-  function clearSelection() {
-    setSelection({ start: null, end: null });
+  function toggleCat(id: string) {
+    setCatFilter((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   }
 
-  const filterLabel = selection.start
+  const dateLabel = selection.start
     ? selection.end
       ? `${friendlyDate(selection.start)} – ${friendlyDate(selection.end)}`
       : friendlyDate(selection.start)
     : null;
 
+  const hasFilters = dateLabel !== null || catFilter.size > 0;
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between px-1">
         <h1 className="text-xl font-bold tracking-tight">Activity</h1>
-        <Button
-          variant={calOpen ? 'default' : 'outline'}
-          size="icon"
-          onClick={() => setCalOpen((o) => !o)}
-          aria-label="Toggle calendar"
-        >
-          <CalendarDays className="h-5 w-5" />
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant={catFilter.size > 0 ? 'default' : 'outline'}
+            size="icon"
+            onClick={() => setFilterOpen(true)}
+            aria-label="Filter by category"
+          >
+            <ListFilter className="h-5 w-5" />
+          </Button>
+          <Button
+            variant={calOpen ? 'default' : 'outline'}
+            size="icon"
+            onClick={() => setCalOpen((o) => !o)}
+            aria-label="Toggle calendar"
+          >
+            <CalendarDays className="h-5 w-5" />
+          </Button>
+        </div>
       </div>
 
       {calOpen && (
@@ -77,21 +105,21 @@ export function TransactionsScreen() {
         />
       )}
 
-      {filterLabel && (
-        <button
-          type="button"
-          onClick={clearSelection}
-          className={cn(
-            'flex w-full items-center justify-between rounded-lg border bg-muted/50 px-3 py-2 text-sm',
+      {hasFilters && (
+        <div className="flex flex-wrap items-center gap-2">
+          {dateLabel && (
+            <FilterChip
+              label={dateLabel}
+              onClear={() => setSelection({ start: null, end: null })}
+            />
           )}
-        >
-          <span>
-            Showing <span className="font-medium">{filterLabel}</span>
-          </span>
-          <span className="flex items-center gap-1 text-muted-foreground">
-            Clear <X className="h-4 w-4" />
-          </span>
-        </button>
+          {catFilter.size > 0 && (
+            <FilterChip
+              label={`${catFilter.size} categor${catFilter.size === 1 ? 'y' : 'ies'}`}
+              onClear={() => setCatFilter(new Set())}
+            />
+          )}
+        </div>
       )}
 
       <TransactionList
@@ -99,9 +127,7 @@ export function TransactionsScreen() {
         categories={categories}
         currency={baseCurrency}
         onSelect={setEditing}
-        emptyLabel={
-          filterLabel ? 'Nothing in this range.' : 'No transactions yet — tap + to add one.'
-        }
+        emptyLabel={hasFilters ? 'Nothing matches these filters.' : 'No transactions yet — tap + to add one.'}
       />
 
       <AddTransactionDialog
@@ -112,6 +138,50 @@ export function TransactionsScreen() {
         categories={categories}
         editing={editing}
       />
+
+      <Dialog open={filterOpen} onOpenChange={setFilterOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Filter by category</DialogTitle>
+            <DialogDescription>
+              Tap categories to show only those. None selected shows everything.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[55vh] overflow-y-auto pr-1">
+            <CategoryGrid>
+              {categories.map((c) => (
+                <CategoryCard
+                  key={c.id}
+                  category={c}
+                  selected={catFilter.has(c.id)}
+                  onClick={() => toggleCat(c.id)}
+                />
+              ))}
+            </CategoryGrid>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" className="flex-1" onClick={() => setCatFilter(new Set())}>
+              Clear
+            </Button>
+            <Button className="flex-1" onClick={() => setFilterOpen(false)}>
+              Done
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
+  );
+}
+
+function FilterChip({ label, onClear }: { label: string; onClear: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClear}
+      className="flex items-center gap-1.5 rounded-full border bg-muted/50 px-3 py-1 text-xs"
+    >
+      <span className="font-medium">{label}</span>
+      <X className="h-3.5 w-3.5 text-muted-foreground" />
+    </button>
   );
 }

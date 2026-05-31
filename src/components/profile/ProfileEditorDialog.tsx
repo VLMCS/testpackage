@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { ColorPicker } from '@/components/common/ColorPicker';
 import { ImageUpload } from '@/components/common/ImageUpload';
 import { updateAccountProfile } from '@/lib/workspace';
+import { gradientFromHex } from '@/lib/theme';
 import type { Account } from '@/types';
 import { Loader2 } from 'lucide-react';
 
@@ -68,7 +69,7 @@ export function ProfileEditorDialog({
         <div className="flex items-center gap-4">
           <span
             className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl text-2xl font-semibold text-white"
-            style={{ backgroundColor: color }}
+            style={{ backgroundImage: gradientFromHex(color) }}
           >
             {avatar ? (
               <img src={avatar} alt="" className="h-full w-full object-cover" />

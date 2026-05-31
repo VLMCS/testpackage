@@ -41,7 +41,7 @@ export function BottomNav({
           type="button"
           onClick={onAdd}
           aria-label="Add transaction"
-          className="-mt-6 flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform active:scale-95"
+          className="bg-accent-gradient -mt-6 flex h-14 w-14 shrink-0 items-center justify-center rounded-full text-primary-foreground shadow-lg transition-transform active:scale-95"
         >
           <Plus className="h-6 w-6" />
         </button>

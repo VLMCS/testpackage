@@ -22,6 +22,7 @@ export function RecurringScreen() {
 
   const accId = activeAccount?.id ?? '';
   const recurringCat = categories.find((c) => c.type === 'recurring');
+  const catById = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories]);
 
   const mine = useMemo(
     () => recurringTemplates.filter((t) => t.accountId === accId && t.active !== false),
@@ -57,7 +58,7 @@ export function RecurringScreen() {
       } else {
         await addTransaction(wsId, {
           accountId: account.id,
-          categoryId: recurringCat?.id ?? '',
+          categoryId: t.categoryId ?? recurringCat?.id ?? '',
           type: 'expense',
           amountCents: t.amountCents,
           date: `${month}-01`,
@@ -150,9 +151,23 @@ export function RecurringScreen() {
                   >
                     {t.name}
                   </span>
-                  {t.note && (
-                    <span className="block truncate text-xs text-muted-foreground">{t.note}</span>
-                  )}
+                  {(() => {
+                    const cat = catById.get(t.categoryId ?? '') ?? recurringCat;
+                    return (
+                      <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        {cat && (
+                          <span
+                            className="h-2 w-2 shrink-0 rounded-full"
+                            style={{ backgroundColor: cat.color }}
+                          />
+                        )}
+                        <span className="truncate">
+                          {cat?.name ?? 'Recurring'}
+                          {t.note ? ` · ${t.note}` : ''}
+                        </span>
+                      </span>
+                    );
+                  })()}
                 </button>
                 <span className="shrink-0 text-sm font-semibold tabular-nums">
                   {formatCents(t.amountCents, baseCurrency)}
@@ -187,6 +202,7 @@ export function RecurringScreen() {
         workspaceId={workspaceId}
         accountId={activeAccount.id}
         baseCurrency={baseCurrency}
+        categories={categories}
         editing={editing}
       />
     </div>

@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { currentBalanceCents } from '@/lib/selectors';
 import { formatCents } from '@/lib/money';
+import { gradientFromHex } from '@/lib/theme';
 import { ChevronRight, Pencil, RefreshCw, Settings } from 'lucide-react';
 
 export function ProfileScreen({ onOpenSettings }: { onOpenSettings: () => void }) {
@@ -23,7 +24,7 @@ export function ProfileScreen({ onOpenSettings }: { onOpenSettings: () => void }
         <CardContent className="flex items-center gap-4 py-5">
           <span
             className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl text-2xl font-semibold text-white"
-            style={{ backgroundColor: activeAccount.color }}
+            style={{ backgroundImage: gradientFromHex(activeAccount.color) }}
           >
             {activeAccount.avatar ? (
               <img src={activeAccount.avatar} alt="" className="h-full w-full object-cover" />

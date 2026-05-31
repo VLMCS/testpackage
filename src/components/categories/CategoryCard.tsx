@@ -1,5 +1,5 @@
 import { getCategoryIcon } from '@/lib/icons';
-import { isLightColor } from '@/lib/theme';
+import { gradientFromHex, isLightColor } from '@/lib/theme';
 import { cn } from '@/lib/utils';
 import type { Category } from '@/types';
 
@@ -29,7 +29,7 @@ export function CategoryCard({
     >
       <span
         className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl"
-        style={{ backgroundColor: category.color }}
+        style={{ backgroundImage: gradientFromHex(category.color) }}
       >
         {category.imageUrl ? (
           <img src={category.imageUrl} alt="" className="h-full w-full object-cover" />

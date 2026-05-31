@@ -5,6 +5,7 @@ import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { Dashboard } from './Dashboard';
 import { BottomNav, type Tab } from './BottomNav';
 import { AddTransactionDialog } from '@/components/transactions/AddTransactionDialog';
+import { gradientFromHex } from '@/lib/theme';
 import { Loader2, WifiOff } from 'lucide-react';
 
 // Lazy-load the non-default screens so the initial bundle stays small.
@@ -51,7 +52,7 @@ export function MainApp() {
           onClick={() => setTab('profile')}
           aria-label="Profile"
           className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full text-sm font-semibold text-white transition-transform active:scale-95"
-          style={{ backgroundColor: activeAccount.color }}
+          style={{ backgroundImage: gradientFromHex(activeAccount.color) }}
         >
           {activeAccount.avatar ? (
             <img src={activeAccount.avatar} alt="" className="h-full w-full object-cover" />

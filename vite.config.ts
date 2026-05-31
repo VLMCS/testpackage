@@ -34,9 +34,9 @@ export default defineConfig(({ command }) => ({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg'],
       manifest: {
-        name: 'Jan & Aki — Budget Tracker',
-        short_name: 'Budget',
-        description: 'Household budget tracker for Jan and Aki',
+        name: 'Clerune Tracker',
+        short_name: 'Clerune',
+        description: 'Clerune budget tracker',
         theme_color: '#0f172a',
         background_color: '#0f172a',
         display: 'standalone',

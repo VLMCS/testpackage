@@ -43,7 +43,7 @@ export function Dashboard({
 
   return (
     <div className="space-y-5">
-      <Card className="bg-primary text-primary-foreground">
+      <Card className="bg-accent-gradient border-0 text-primary-foreground">
         <CardContent className="py-5">
           <p className="text-xs opacity-80">{activeAccount.name}'s balance</p>
           <p className="text-3xl font-bold tracking-tight">{formatCents(balance, baseCurrency)}</p>

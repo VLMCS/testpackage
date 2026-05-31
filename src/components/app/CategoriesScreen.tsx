@@ -1,21 +1,40 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useSession } from '@/hooks/useSession';
 import { useData } from '@/hooks/useData';
 import { CategoryGrid } from '@/components/categories/CategoryGrid';
 import { CategoryCard } from '@/components/categories/CategoryCard';
 import { CategoryEditorDialog } from '@/components/categories/CategoryEditorDialog';
+import { currentMonthKey, monthKeyOf } from '@/lib/date';
+import { formatCents } from '@/lib/money';
 import { Plus } from 'lucide-react';
 import type { Category } from '@/types';
 
 type EditableType = 'expense' | 'income';
 
 export function CategoriesScreen() {
-  const { workspaceId } = useSession();
-  const { categories } = useData();
+  const { activeAccount, baseCurrency, workspaceId } = useSession();
+  const { categories, transactions } = useData();
   const [editing, setEditing] = useState<Category | null>(null);
   const [addType, setAddType] = useState<EditableType | null>(null);
 
+  const accId = activeAccount?.id ?? '';
+  const month = currentMonthKey();
+
+  // This-month total per category (for the active account) shown on each card.
+  const monthByCat = useMemo(() => {
+    const m: Record<string, number> = {};
+    for (const t of transactions) {
+      if (t.accountId !== accId) continue;
+      if (monthKeyOf(t.date) !== month) continue;
+      m[t.categoryId] = (m[t.categoryId] ?? 0) + t.amountCents;
+    }
+    return m;
+  }, [transactions, accId, month]);
+
   if (!workspaceId) return null;
+
+  const subtitleFor = (c: Category) =>
+    monthByCat[c.id] ? formatCents(monthByCat[c.id], baseCurrency) : undefined;
 
   const expense = categories.filter((c) => c.type === 'expense');
   const income = categories.filter((c) => c.type === 'income');
@@ -30,7 +49,7 @@ export function CategoriesScreen() {
       <Section title="Expenses">
         <CategoryGrid>
           {expense.map((c) => (
-            <CategoryCard key={c.id} category={c} onClick={() => setEditing(c)} />
+            <CategoryCard key={c.id} category={c} subtitle={subtitleFor(c)} onClick={() => setEditing(c)} />
           ))}
           <AddTile onClick={() => setAddType('expense')} />
         </CategoryGrid>
@@ -39,7 +58,7 @@ export function CategoriesScreen() {
       <Section title="Income">
         <CategoryGrid>
           {income.map((c) => (
-            <CategoryCard key={c.id} category={c} onClick={() => setEditing(c)} />
+            <CategoryCard key={c.id} category={c} subtitle={subtitleFor(c)} onClick={() => setEditing(c)} />
           ))}
           <AddTile onClick={() => setAddType('income')} />
         </CategoryGrid>
@@ -49,7 +68,7 @@ export function CategoriesScreen() {
         <Section title="Recurring">
           <CategoryGrid>
             {recurring.map((c) => (
-              <CategoryCard key={c.id} category={c} onClick={() => setEditing(c)} />
+              <CategoryCard key={c.id} category={c} subtitle={subtitleFor(c)} onClick={() => setEditing(c)} />
             ))}
           </CategoryGrid>
           <p className="px-1 text-xs text-muted-foreground">

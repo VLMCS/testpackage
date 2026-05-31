@@ -14,7 +14,7 @@ import { ColorPicker } from '@/components/common/ColorPicker';
 import { ImageUpload } from '@/components/common/ImageUpload';
 import { IconPicker } from './IconPicker';
 import { getCategoryIcon } from '@/lib/icons';
-import { isLightColor } from '@/lib/theme';
+import { gradientFromHex, isLightColor } from '@/lib/theme';
 import { cn } from '@/lib/utils';
 import { addCategory, updateCategory, deleteCategory } from '@/lib/categories';
 import type { Category, CategoryType } from '@/types';
@@ -131,7 +131,7 @@ export function CategoryEditorDialog({
         <div className="flex items-center gap-3">
           <span
             className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl"
-            style={{ backgroundColor: color }}
+            style={{ backgroundImage: gradientFromHex(color) }}
           >
             {imageUrl ? (
               <img src={imageUrl} alt="" className="h-full w-full object-cover" />

@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { parseAmountToCents } from '@/lib/money';
+import { gradientFromHex } from '@/lib/theme';
 import { ArrowLeft, ChevronRight, Loader2, Lock, Plus } from 'lucide-react';
 
 export function AccountGate() {
@@ -66,7 +67,7 @@ function AccountPicker({
             >
               <span
                 className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full text-lg font-semibold text-white"
-                style={{ backgroundColor: acc.color }}
+                style={{ backgroundImage: gradientFromHex(acc.color) }}
               >
                 {acc.avatar ? (
                   <img src={acc.avatar} alt="" className="h-full w-full object-cover" />

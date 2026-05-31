@@ -59,6 +59,9 @@ export type Transaction = {
 export type RecurringTemplate = {
   id: string;
   accountId: AccountId;
+  // The category a ticked bill is recorded under (e.g. Electricity → Home Bills).
+  // Falls back to the special Recurring category when unset (older templates).
+  categoryId?: string;
   name: string;
   amountCents: number;
   note: string;
