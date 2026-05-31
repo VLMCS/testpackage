@@ -22,7 +22,7 @@ export default defineConfig(({ command }) => ({
           // (also clears Vite's >500 kB single-chunk warning). Firestore is the
           // heaviest, so it gets its own chunk separate from auth/app.
           'firebase-firestore': ['firebase/firestore'],
-          'firebase-core': ['firebase/app', 'firebase/auth'],
+          'firebase-core': ['firebase/app', 'firebase/auth', 'firebase/app-check'],
           react: ['react', 'react-dom'],
         },
       },
