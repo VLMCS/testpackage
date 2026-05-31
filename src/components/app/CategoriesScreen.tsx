@@ -4,7 +4,7 @@ import { useData } from '@/hooks/useData';
 import { CategoryGrid } from '@/components/categories/CategoryGrid';
 import { CategoryCard } from '@/components/categories/CategoryCard';
 import { CategoryEditorDialog } from '@/components/categories/CategoryEditorDialog';
-import { Plus, Repeat } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import type { Category } from '@/types';
 
 type EditableType = 'expense' | 'income';
@@ -47,13 +47,15 @@ export function CategoriesScreen() {
 
       {recurring.length > 0 && (
         <Section title="Recurring">
-          <div className="flex items-start gap-2 rounded-xl border border-dashed bg-muted/40 p-3 text-xs text-muted-foreground">
-            <Repeat className="mt-0.5 h-4 w-4 shrink-0" />
-            <p>
-              Recurring bills get their own tab with monthly carry-over and checkboxes — coming in
-              the next update.
-            </p>
-          </div>
+          <CategoryGrid>
+            {recurring.map((c) => (
+              <CategoryCard key={c.id} category={c} onClick={() => setEditing(c)} />
+            ))}
+          </CategoryGrid>
+          <p className="px-1 text-xs text-muted-foreground">
+            Manage the bills themselves in the Recurring tab. Tap here to recolor, change the icon,
+            or turn off "Count toward Top Category".
+          </p>
         </Section>
       )}
 

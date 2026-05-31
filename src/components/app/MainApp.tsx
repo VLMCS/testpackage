@@ -5,6 +5,7 @@ import { Dashboard } from './Dashboard';
 import { TransactionsScreen } from './TransactionsScreen';
 import { CategoriesScreen } from './CategoriesScreen';
 import { ProfileScreen } from './ProfileScreen';
+import { AnalyticsScreen } from './AnalyticsScreen';
 import { RecurringScreen } from '@/components/recurring/RecurringScreen';
 import { BottomNav, type Tab } from './BottomNav';
 import { AddTransactionDialog } from '@/components/transactions/AddTransactionDialog';
@@ -44,10 +45,16 @@ export function MainApp() {
           </div>
         ) : (
           <>
-            {tab === 'home' && <Dashboard onViewAll={() => setTab('activity')} />}
+            {tab === 'home' && (
+              <Dashboard
+                onViewAll={() => setTab('activity')}
+                onInsights={() => setTab('analytics')}
+              />
+            )}
             {tab === 'activity' && <TransactionsScreen />}
             {tab === 'recurring' && <RecurringScreen />}
             {tab === 'categories' && <CategoriesScreen />}
+            {tab === 'analytics' && <AnalyticsScreen onBack={() => setTab('home')} />}
             {tab === 'profile' && <ProfileScreen />}
           </>
         )}

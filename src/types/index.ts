@@ -32,6 +32,9 @@ export type Category = {
   color: string;
   isDefault: boolean;
   sortOrder: number;
+  // When true, this category is omitted from the "Top Category" / "where you spend
+  // most" ranking (it still counts toward total spending). Default false.
+  excludeFromTop?: boolean;
 };
 
 export type Transaction = {

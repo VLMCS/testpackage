@@ -9,6 +9,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { ColorPicker } from '@/components/common/ColorPicker';
 import { ImageUpload } from '@/components/common/ImageUpload';
 import { IconPicker } from './IconPicker';
@@ -35,10 +36,11 @@ export function CategoryEditorDialog({
   defaultType: EditableType;
 }) {
   const [name, setName] = useState('');
-  const [type, setType] = useState<EditableType>(defaultType);
+  const [type, setType] = useState<CategoryType>(defaultType);
   const [color, setColor] = useState('#2563eb');
   const [icon, setIcon] = useState('Tag');
   const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [excludeFromTop, setExcludeFromTop] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -46,22 +48,26 @@ export function CategoryEditorDialog({
     if (!open) return;
     if (editing) {
       setName(editing.name);
-      setType(editing.type === 'income' ? 'income' : 'expense');
+      setType(editing.type);
       setColor(editing.color);
       setIcon(editing.icon);
       setImageUrl(editing.imageUrl ?? null);
+      setExcludeFromTop(editing.excludeFromTop ?? false);
     } else {
       setName('');
       setType(defaultType);
       setColor('#2563eb');
       setIcon('Tag');
       setImageUrl(null);
+      setExcludeFromTop(false);
     }
     setErr(null);
   }, [open, editing, defaultType]);
 
   const Icon = getCategoryIcon(icon);
   const darkGlyph = isLightColor(color);
+  const isRecurring = type === 'recurring';
+  const showTopToggle = type !== 'income'; // only expense + recurring appear in spending
 
   async function save() {
     const trimmed = name.trim();
@@ -79,6 +85,7 @@ export function CategoryEditorDialog({
           color,
           icon,
           imageUrl,
+          excludeFromTop,
         });
       } else {
         await addCategory(workspaceId, {
@@ -89,6 +96,7 @@ export function CategoryEditorDialog({
           imageUrl,
           isDefault: false,
           sortOrder: 100,
+          excludeFromTop,
         });
       }
       onOpenChange(false);
@@ -142,21 +150,23 @@ export function CategoryEditorDialog({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1">
-          {(['expense', 'income'] as EditableType[]).map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => setType(t)}
-              className={cn(
-                'rounded-md py-1.5 text-sm font-medium capitalize transition-colors',
-                type === t ? 'bg-background shadow-sm' : 'text-muted-foreground',
-              )}
-            >
-              {t}
-            </button>
-          ))}
-        </div>
+        {!isRecurring && (
+          <div className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1">
+            {(['expense', 'income'] as EditableType[]).map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setType(t)}
+                className={cn(
+                  'rounded-md py-1.5 text-sm font-medium capitalize transition-colors',
+                  type === t ? 'bg-background shadow-sm' : 'text-muted-foreground',
+                )}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+        )}
 
         <div className="space-y-2">
           <Label>Color</Label>
@@ -178,11 +188,31 @@ export function CategoryEditorDialog({
           {!imageUrl && <IconPicker value={icon} onChange={setIcon} />}
         </div>
 
+        {showTopToggle && (
+          <div className="flex items-center justify-between rounded-lg border p-3">
+            <div className="pr-3">
+              <p className="text-sm font-medium">Count toward Top Category</p>
+              <p className="text-xs text-muted-foreground">
+                Turn off to keep this out of the "where you spend most" ranking. It still counts in
+                total spending.
+              </p>
+            </div>
+            <Switch checked={!excludeFromTop} onCheckedChange={(v) => setExcludeFromTop(!v)} />
+          </div>
+        )}
+
         {err && <p className="text-sm text-destructive">{err}</p>}
 
         <div className="flex items-center gap-2">
           {editing && !editing.isDefault && (
-            <Button type="button" variant="ghost" size="icon" onClick={remove} disabled={busy} aria-label="Delete category">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={remove}
+              disabled={busy}
+              aria-label="Delete category"
+            >
               <Trash2 className="h-5 w-5 text-destructive" />
             </Button>
           )}

@@ -2,15 +2,21 @@ import { useMemo } from 'react';
 import { useSession } from '@/hooks/useSession';
 import { useData } from '@/hooks/useData';
 import { currentMonthKey, monthLabel } from '@/lib/date';
-import { totalsForMonth, currentBalanceCents, spendingByCategory } from '@/lib/selectors';
+import { totalsForMonth, currentBalanceCents, topSpendingCategories } from '@/lib/selectors';
 import { formatCents } from '@/lib/money';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { TransactionList } from '@/components/transactions/TransactionList';
-import { ArrowDownRight, ArrowUpRight, PiggyBank, Trophy } from 'lucide-react';
+import { ArrowDownRight, ArrowUpRight, ChevronRight, PiggyBank, Trophy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export function Dashboard({ onViewAll }: { onViewAll: () => void }) {
+export function Dashboard({
+  onViewAll,
+  onInsights,
+}: {
+  onViewAll: () => void;
+  onInsights: () => void;
+}) {
   const { activeAccount, baseCurrency } = useSession();
   const { transactions, categories } = useData();
   const month = currentMonthKey();
@@ -25,17 +31,8 @@ export function Dashboard({ onViewAll }: { onViewAll: () => void }) {
     [activeAccount, transactions],
   );
   const top = useMemo(() => {
-    const map = spendingByCategory(transactions, accId, month);
-    let bestId: string | null = null;
-    let best = 0;
-    for (const [id, cents] of Object.entries(map)) {
-      if (cents > best) {
-        best = cents;
-        bestId = id;
-      }
-    }
-    const cat = categories.find((c) => c.id === bestId);
-    return cat ? { name: cat.name, cents: best } : null;
+    const ranked = topSpendingCategories(transactions, accId, month, categories);
+    return ranked[0] ? { name: ranked[0].category.name, cents: ranked[0].cents } : null;
   }, [transactions, categories, accId, month]);
   const recent = useMemo(
     () => transactions.filter((t) => t.accountId === accId).slice(0, 5),
@@ -54,7 +51,12 @@ export function Dashboard({ onViewAll }: { onViewAll: () => void }) {
       </Card>
 
       <div>
-        <p className="mb-2 px-1 text-sm font-medium text-muted-foreground">{monthLabel(month)}</p>
+        <div className="mb-2 flex items-center justify-between px-1">
+          <p className="text-sm font-medium text-muted-foreground">{monthLabel(month)}</p>
+          <Button variant="ghost" size="sm" onClick={onInsights}>
+            Insights <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
         <div className="grid grid-cols-2 gap-3">
           <StatCard
             label="Income"

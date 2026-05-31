@@ -1,4 +1,4 @@
-import type { Account, Transaction } from '@/types';
+import type { Account, Category, Transaction } from '@/types';
 import { monthKeyOf } from './date';
 
 export interface MonthTotals {
@@ -46,4 +46,32 @@ export function spendingByCategory(
     out[t.categoryId] = (out[t.categoryId] ?? 0) + t.amountCents;
   }
   return out;
+}
+
+export interface CategorySpend {
+  category: Category;
+  cents: number;
+}
+
+/**
+ * Expense categories ranked by spend for the month, highest first. Categories
+ * flagged `excludeFromTop` are omitted from this ranking (they still count toward
+ * total spending elsewhere).
+ */
+export function topSpendingCategories(
+  txns: Transaction[],
+  accountId: string,
+  monthKey: string,
+  categories: Category[],
+): CategorySpend[] {
+  const map = spendingByCategory(txns, accountId, monthKey);
+  const byId = new Map(categories.map((c) => [c.id, c]));
+  const rows: CategorySpend[] = [];
+  for (const [id, cents] of Object.entries(map)) {
+    const category = byId.get(id);
+    if (!category || category.excludeFromTop) continue;
+    rows.push({ category, cents });
+  }
+  rows.sort((a, b) => b.cents - a.cents);
+  return rows;
 }
