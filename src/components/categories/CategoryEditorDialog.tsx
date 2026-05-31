@@ -64,6 +64,7 @@ export function CategoryEditorDialog({
       setExcludeFromTop(false);
     }
     setErr(null);
+    setBusy(false);
   }, [open, editing, defaultType]);
 
   const Icon = getCategoryIcon(icon);

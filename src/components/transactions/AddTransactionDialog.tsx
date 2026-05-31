@@ -58,6 +58,7 @@ export function AddTransactionDialog({
       setNote('');
     }
     setErr(null);
+    setBusy(false);
   }, [open, editing]);
 
   const options = categories.filter((c) => c.type === type);

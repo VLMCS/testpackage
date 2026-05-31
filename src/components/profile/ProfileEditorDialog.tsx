@@ -39,6 +39,7 @@ export function ProfileEditorDialog({
     setColor(account.color);
     setAvatar(account.avatar ?? null);
     setErr(null);
+    setBusy(false);
   }, [open, account]);
 
   async function save() {

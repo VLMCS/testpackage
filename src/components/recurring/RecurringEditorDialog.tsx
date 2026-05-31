@@ -62,6 +62,7 @@ export function RecurringEditorDialog({
       setCategoryId(fallbackCategoryId);
     }
     setErr(null);
+    setBusy(false);
     // fallbackCategoryId is derived from categories; intentionally not a dep.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, editing]);
