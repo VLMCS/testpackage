@@ -3,61 +3,105 @@ import { useSession } from '@/hooks/useSession';
 import { useData } from '@/hooks/useData';
 import { TransactionList } from '@/components/transactions/TransactionList';
 import { AddTransactionDialog } from '@/components/transactions/AddTransactionDialog';
+import { ActivityCalendar, type DaySelection } from '@/components/transactions/ActivityCalendar';
+import { Button } from '@/components/ui/button';
+import { currentMonthKey, friendlyDate } from '@/lib/date';
+import { CalendarDays, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Transaction } from '@/types';
 
-type Filter = 'mine' | 'partner' | 'both';
-
 export function TransactionsScreen() {
-  const { activeAccount, accounts, baseCurrency, workspaceId } = useSession();
+  const { activeAccount, baseCurrency, workspaceId } = useSession();
   const { transactions, categories } = useData();
-  const [filter, setFilter] = useState<Filter>('mine');
   const [editing, setEditing] = useState<Transaction | null>(null);
+  const [calOpen, setCalOpen] = useState(false);
+  const [calMonth, setCalMonth] = useState(currentMonthKey());
+  const [selection, setSelection] = useState<DaySelection>({ start: null, end: null });
 
   const accId = activeAccount?.id ?? '';
-  const partner = accounts.find((a) => a.id !== accId) ?? null;
-  const ownerColors = Object.fromEntries(accounts.map((a) => [a.id, a.color]));
 
-  const filtered = useMemo(() => {
-    if (filter === 'both') return transactions;
-    if (filter === 'partner' && partner) return transactions.filter((t) => t.accountId === partner.id);
-    return transactions.filter((t) => t.accountId === accId);
-  }, [filter, transactions, accId, partner]);
+  // Only ever this profile's own transactions.
+  const own = useMemo(
+    () => transactions.filter((t) => t.accountId === accId),
+    [transactions, accId],
+  );
+
+  const visible = useMemo(() => {
+    const { start, end } = selection;
+    if (start && end) return own.filter((t) => t.date >= start && t.date <= end);
+    if (start) return own.filter((t) => t.date === start);
+    return own;
+  }, [own, selection]);
 
   if (!activeAccount || !workspaceId) return null;
 
-  const tabs: { key: Filter; label: string }[] = [
-    { key: 'mine', label: activeAccount.name },
-    { key: 'partner', label: partner?.name ?? 'Partner' },
-    { key: 'both', label: 'Both' },
-  ];
+  function handleSelectDay(iso: string) {
+    setSelection((sel) => {
+      if (!sel.start || sel.end) return { start: iso, end: null }; // begin a new selection
+      if (iso <= sel.start) return { start: iso, end: null }; // restart at/before current start
+      return { start: sel.start, end: iso }; // complete the range
+    });
+  }
+
+  function clearSelection() {
+    setSelection({ start: null, end: null });
+  }
+
+  const filterLabel = selection.start
+    ? selection.end
+      ? `${friendlyDate(selection.start)} – ${friendlyDate(selection.end)}`
+      : friendlyDate(selection.start)
+    : null;
 
   return (
     <div className="space-y-4">
-      <h1 className="px-1 text-xl font-bold tracking-tight">Transactions</h1>
-
-      <div className="grid grid-cols-3 gap-1 rounded-lg bg-muted p-1">
-        {tabs.map((t) => (
-          <button
-            key={t.key}
-            type="button"
-            onClick={() => setFilter(t.key)}
-            className={cn(
-              'truncate rounded-md py-1.5 text-sm font-medium transition-colors',
-              filter === t.key ? 'bg-background shadow-sm' : 'text-muted-foreground',
-            )}
-          >
-            {t.label}
-          </button>
-        ))}
+      <div className="flex items-center justify-between px-1">
+        <h1 className="text-xl font-bold tracking-tight">Activity</h1>
+        <Button
+          variant={calOpen ? 'default' : 'outline'}
+          size="icon"
+          onClick={() => setCalOpen((o) => !o)}
+          aria-label="Toggle calendar"
+        >
+          <CalendarDays className="h-5 w-5" />
+        </Button>
       </div>
 
+      {calOpen && (
+        <ActivityCalendar
+          monthKey={calMonth}
+          onMonthChange={setCalMonth}
+          transactions={own}
+          selection={selection}
+          onSelectDay={handleSelectDay}
+        />
+      )}
+
+      {filterLabel && (
+        <button
+          type="button"
+          onClick={clearSelection}
+          className={cn(
+            'flex w-full items-center justify-between rounded-lg border bg-muted/50 px-3 py-2 text-sm',
+          )}
+        >
+          <span>
+            Showing <span className="font-medium">{filterLabel}</span>
+          </span>
+          <span className="flex items-center gap-1 text-muted-foreground">
+            Clear <X className="h-4 w-4" />
+          </span>
+        </button>
+      )}
+
       <TransactionList
-        transactions={filtered}
+        transactions={visible}
         categories={categories}
         currency={baseCurrency}
         onSelect={setEditing}
-        ownerColors={filter === 'both' ? ownerColors : undefined}
+        emptyLabel={
+          filterLabel ? 'Nothing in this range.' : 'No transactions yet — tap + to add one.'
+        }
       />
 
       <AddTransactionDialog
