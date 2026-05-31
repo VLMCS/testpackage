@@ -30,10 +30,11 @@ export function Dashboard({
     () => (activeAccount ? currentBalanceCents(activeAccount, transactions) : 0),
     [activeAccount, transactions],
   );
+  const myCats = useMemo(() => categories.filter((c) => c.accountId === accId), [categories, accId]);
   const top = useMemo(() => {
-    const ranked = topSpendingCategories(transactions, accId, month, categories);
+    const ranked = topSpendingCategories(transactions, accId, month, myCats);
     return ranked[0] ? { name: ranked[0].category.name, cents: ranked[0].cents } : null;
-  }, [transactions, categories, accId, month]);
+  }, [transactions, myCats, accId, month]);
   const recent = useMemo(
     () => transactions.filter((t) => t.accountId === accId).slice(0, 5),
     [transactions, accId],
@@ -95,7 +96,7 @@ export function Dashboard({
         </div>
         <TransactionList
           transactions={recent}
-          categories={categories}
+          categories={myCats}
           currency={baseCurrency}
           emptyLabel="No transactions yet — tap + to add one."
         />

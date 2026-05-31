@@ -14,6 +14,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { gradientFromHex } from '@/lib/theme';
+import { migrateCategoriesPerAccount } from '@/lib/migrate';
 import { Loader2, WifiOff } from 'lucide-react';
 
 // Lazy-load the non-default screens so the initial bundle stays small.
@@ -37,8 +38,8 @@ const SettingsScreen = lazy(() =>
 );
 
 export function MainApp() {
-  const { activeAccount, workspaceId } = useSession();
-  const { categories, loading } = useData();
+  const { activeAccount, accounts, workspaceId } = useSession();
+  const { categories, transactions, recurringTemplates, loading } = useData();
   const online = useOnlineStatus();
   const [tab, setTab] = useState<Tab>('home');
   const [addOpen, setAddOpen] = useState(false);
@@ -85,7 +86,26 @@ export function MainApp() {
     window.history.back();
   }
 
+  // One-time migration: give each account its own copy of the old shared
+  // categories (no-ops once the workspace is on schemaVersion 2).
+  const migratedRef = useRef(false);
+  useEffect(() => {
+    if (loading || migratedRef.current || !workspaceId || accounts.length === 0) return;
+    migratedRef.current = true;
+    void migrateCategoriesPerAccount(
+      workspaceId,
+      accounts,
+      categories,
+      transactions,
+      recurringTemplates,
+    ).catch(() => {
+      migratedRef.current = false; // allow a retry next render if it failed
+    });
+  }, [loading, workspaceId, accounts, categories, transactions, recurringTemplates]);
+
   if (!activeAccount || !workspaceId) return null;
+
+  const myCategories = categories.filter((c) => c.accountId === activeAccount.id);
 
   const fallback = (
     <div className="flex justify-center py-24">
@@ -147,7 +167,7 @@ export function MainApp() {
         onOpenChange={setAddOpen}
         workspaceId={workspaceId}
         accountId={activeAccount.id}
-        categories={categories}
+        categories={myCategories}
       />
 
       <Dialog open={exitOpen} onOpenChange={setExitOpen}>

@@ -8,16 +8,24 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { parseAmountToCents } from '@/lib/money';
 import { gradientFromHex } from '@/lib/theme';
+import { AddAccountFlow } from './AddAccountFlow';
 import { ArrowLeft, ChevronRight, Loader2, Lock, Plus } from 'lucide-react';
 
 export function AccountGate() {
   const { accounts, lastAccountId } = useSession();
   const [selected, setSelected] = useState<AccountId | null>(null);
+  const [adding, setAdding] = useState(false);
   const account = accounts.find((a) => a.id === selected) ?? null;
 
+  if (adding) return <AddAccountFlow onBack={() => setAdding(false)} />;
   if (!account) {
     return (
-      <AccountPicker accounts={accounts} lastAccountId={lastAccountId} onPick={setSelected} />
+      <AccountPicker
+        accounts={accounts}
+        lastAccountId={lastAccountId}
+        onPick={setSelected}
+        onAdd={() => setAdding(true)}
+      />
     );
   }
   if (!account.pinHash) {
@@ -38,10 +46,12 @@ function AccountPicker({
   accounts,
   lastAccountId,
   onPick,
+  onAdd,
 }: {
   accounts: Account[];
   lastAccountId: AccountId | null;
   onPick: (id: AccountId) => void;
+  onAdd: () => void;
 }) {
   const ordered = [...accounts].sort((a, b) => {
     if (a.id === lastAccountId) return -1;
@@ -93,6 +103,17 @@ function AccountPicker({
             </button>
           );
         })}
+
+        <button
+          type="button"
+          onClick={onAdd}
+          className="flex w-full items-center gap-4 rounded-xl border border-dashed p-4 text-left text-muted-foreground transition-colors hover:bg-accent"
+        >
+          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+            <Plus className="h-5 w-5" />
+          </span>
+          <span className="font-medium">Add account</span>
+        </button>
       </div>
     </Shell>
   );

@@ -22,16 +22,17 @@ export function AnalyticsScreen({ onBack }: { onBack: () => void }) {
     () => totalsForMonth(transactions, accId, prevMonth),
     [transactions, accId, prevMonth],
   );
+  const myCats = useMemo(() => categories.filter((c) => c.accountId === accId), [categories, accId]);
   const topCats = useMemo(
-    () => topSpendingCategories(transactions, accId, month, categories),
-    [transactions, accId, month, categories],
+    () => topSpendingCategories(transactions, accId, month, myCats),
+    [transactions, accId, month, myCats],
   );
 
   if (!activeAccount) return null;
 
   const maxCat = topCats[0]?.cents ?? 0;
   const savingsRate = cur.incomeCents > 0 ? Math.round((cur.savedCents / cur.incomeCents) * 100) : null;
-  const hasExcluded = categories.some((c) => c.excludeFromTop);
+  const hasExcluded = myCats.some((c) => c.excludeFromTop);
 
   return (
     <div className="space-y-5">

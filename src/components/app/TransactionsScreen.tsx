@@ -34,6 +34,7 @@ export function TransactionsScreen() {
     () => transactions.filter((t) => t.accountId === accId),
     [transactions, accId],
   );
+  const myCats = useMemo(() => categories.filter((c) => c.accountId === accId), [categories, accId]);
 
   const visible = useMemo(() => {
     let list = own;
@@ -114,7 +115,7 @@ export function TransactionsScreen() {
             />
           )}
           {[...catFilter].map((id) => {
-            const c = categories.find((x) => x.id === id);
+            const c = myCats.find((x) => x.id === id);
             return (
               <FilterChip
                 key={id}
@@ -129,7 +130,7 @@ export function TransactionsScreen() {
 
       <TransactionList
         transactions={visible}
-        categories={categories}
+        categories={myCats}
         currency={baseCurrency}
         onSelect={setEditing}
         emptyLabel={hasFilters ? 'Nothing matches these filters.' : 'No transactions yet — tap + to add one.'}
@@ -154,7 +155,7 @@ export function TransactionsScreen() {
           </DialogHeader>
           <div className="max-h-[55vh] overflow-y-auto pr-1">
             <CategoryGrid>
-              {categories.map((c) => (
+              {myCats.map((c) => (
                 <CategoryCard
                   key={c.id}
                   category={c}

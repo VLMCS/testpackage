@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useSession } from '@/hooks/useSession';
 import { useTheme } from '@/hooks/useTheme';
-import { updateBaseCurrency } from '@/lib/workspace';
+import { updateAccountProfile } from '@/lib/workspace';
 import { CURRENCIES } from '@/lib/constants';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,18 +11,19 @@ import type { ThemeMode } from '@/lib/themeMode';
 import { ArrowLeft, Loader2, Monitor, Moon, Sun } from 'lucide-react';
 
 export function SettingsScreen({ onBack }: { onBack: () => void }) {
-  const { baseCurrency, workspaceId } = useSession();
+  const { activeAccount, baseCurrency, workspaceId } = useSession();
   const { theme, setTheme } = useTheme();
   const [saving, setSaving] = useState(false);
 
-  if (!workspaceId) return null;
+  if (!workspaceId || !activeAccount) return null;
   const wsId = workspaceId;
+  const accId = activeAccount.id;
 
   async function changeCurrency(code: string) {
     if (code === baseCurrency) return;
     setSaving(true);
     try {
-      await updateBaseCurrency(wsId, code);
+      await updateAccountProfile(wsId, accId, { baseCurrency: code });
     } finally {
       setSaving(false);
     }
@@ -64,7 +65,7 @@ export function SettingsScreen({ onBack }: { onBack: () => void }) {
           </CardContent>
         </Card>
         <p className="px-1 text-xs text-muted-foreground">
-          Shared across both profiles. Amounts are shown with this symbol; existing values aren't
+          Applies to this profile only. Amounts are shown with this symbol; existing values aren't
           converted.
         </p>
       </div>

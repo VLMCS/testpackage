@@ -36,9 +36,10 @@ export function CategoriesScreen() {
   const subtitleFor = (c: Category) =>
     monthByCat[c.id] ? formatCents(monthByCat[c.id], baseCurrency) : undefined;
 
-  const expense = categories.filter((c) => c.type === 'expense');
-  const income = categories.filter((c) => c.type === 'income');
-  const recurring = categories.filter((c) => c.type === 'recurring');
+  const mine = categories.filter((c) => c.accountId === accId);
+  const expense = mine.filter((c) => c.type === 'expense');
+  const income = mine.filter((c) => c.type === 'income');
+  const recurring = mine.filter((c) => c.type === 'recurring');
 
   const open = editing !== null || addType !== null;
 
@@ -87,6 +88,7 @@ export function CategoriesScreen() {
           }
         }}
         workspaceId={workspaceId}
+        accountId={accId}
         editing={editing}
         defaultType={addType ?? 'expense'}
       />

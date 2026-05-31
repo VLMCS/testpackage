@@ -1,10 +1,13 @@
-export type AccountId = 'jan' | 'aki';
+// Account identifier. The original two accounts use the literal ids 'jan'/'aki';
+// accounts added later get Firestore auto-ids. So this is just a string.
+export type AccountId = string;
 
 export type Account = {
   id: AccountId;
   name: string;
   color: string;
   avatar?: string | null; // data URL for a custom profile picture (compressed)
+  baseCurrency?: string; // per-account currency; falls back to the workspace currency
   startingBalanceCents: number | null;
   pinHash: string | null;
   pinSalt: string | null;
@@ -25,6 +28,7 @@ export type CategoryType = 'income' | 'expense' | 'recurring';
 
 export type Category = {
   id: string;
+  accountId: AccountId; // owner — categories are per-account
   name: string;
   type: CategoryType;
   icon: string; // lucide-react icon name (used when imageUrl is absent)

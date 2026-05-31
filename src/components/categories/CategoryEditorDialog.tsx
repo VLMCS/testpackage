@@ -26,12 +26,14 @@ export function CategoryEditorDialog({
   open,
   onOpenChange,
   workspaceId,
+  accountId,
   editing,
   defaultType,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   workspaceId: string;
+  accountId: string;
   editing: Category | null;
   defaultType: EditableType;
 }) {
@@ -89,6 +91,7 @@ export function CategoryEditorDialog({
         });
       } else {
         await addCategory(workspaceId, {
+          accountId,
           name: trimmed,
           type,
           color,

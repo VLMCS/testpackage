@@ -21,8 +21,9 @@ export function RecurringScreen() {
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const accId = activeAccount?.id ?? '';
-  const recurringCat = categories.find((c) => c.type === 'recurring');
-  const catById = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories]);
+  const myCats = useMemo(() => categories.filter((c) => c.accountId === accId), [categories, accId]);
+  const recurringCat = myCats.find((c) => c.type === 'recurring');
+  const catById = useMemo(() => new Map(myCats.map((c) => [c.id, c])), [myCats]);
 
   const mine = useMemo(
     () => recurringTemplates.filter((t) => t.accountId === accId && t.active !== false),
@@ -202,7 +203,7 @@ export function RecurringScreen() {
         workspaceId={workspaceId}
         accountId={activeAccount.id}
         baseCurrency={baseCurrency}
-        categories={categories}
+        categories={myCats}
         editing={editing}
       />
     </div>

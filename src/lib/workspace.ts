@@ -34,32 +34,93 @@ export async function createWorkspace(workspaceId: string, uid: string): Promise
     allowedUids: [uid],
     baseCurrency: DEFAULT_CURRENCY,
     createdAt: now,
-    schemaVersion: 1,
+    schemaVersion: 2,
   };
   await setDoc(doc(db, WORKSPACES, workspaceId), workspace);
 
+  // Seed the two accounts, each with its OWN copy of the default categories.
   const batch = writeBatch(db);
   for (const a of ACCOUNT_DEFS) {
     batch.set(doc(db, WORKSPACES, workspaceId, 'accounts', a.id), {
       name: a.name,
       color: a.color,
+      baseCurrency: DEFAULT_CURRENCY,
+      avatar: null,
       startingBalanceCents: null,
       pinHash: null,
       pinSalt: null,
       createdAt: now,
     });
+    for (const c of DEFAULT_CATEGORIES) {
+      batch.set(doc(collection(db, WORKSPACES, workspaceId, 'categories')), {
+        accountId: a.id,
+        name: c.name,
+        type: c.type,
+        icon: c.icon,
+        imageUrl: null,
+        color: c.color,
+        isDefault: true,
+        sortOrder: c.sortOrder,
+        excludeFromTop: false,
+      });
+    }
   }
-  for (const c of DEFAULT_CATEGORIES) {
+  await batch.commit();
+}
+
+/**
+ * Create an additional account (a new user) and seed its categories.
+ * `categoryChoice`: 'default' seeds the full default set; 'own' seeds only the
+ * special Recurring category so the user starts otherwise blank.
+ * Returns the new account id.
+ */
+export async function createAccount(
+  workspaceId: string,
+  data: {
+    name: string;
+    color: string;
+    baseCurrency: string;
+    startingBalanceCents: number;
+    pinHash: string;
+    pinSalt: string;
+  },
+  categoryChoice: 'default' | 'own',
+): Promise<string> {
+  const { db } = getFirebase();
+  const now = Date.now();
+  const accRef = doc(collection(db, WORKSPACES, workspaceId, 'accounts'));
+
+  const batch = writeBatch(db);
+  batch.set(accRef, {
+    name: data.name,
+    color: data.color,
+    baseCurrency: data.baseCurrency,
+    avatar: null,
+    startingBalanceCents: data.startingBalanceCents,
+    pinHash: data.pinHash,
+    pinSalt: data.pinSalt,
+    createdAt: now,
+  });
+
+  const seeds =
+    categoryChoice === 'default'
+      ? DEFAULT_CATEGORIES
+      : DEFAULT_CATEGORIES.filter((c) => c.type === 'recurring');
+  for (const c of seeds) {
     batch.set(doc(collection(db, WORKSPACES, workspaceId, 'categories')), {
+      accountId: accRef.id,
       name: c.name,
       type: c.type,
       icon: c.icon,
+      imageUrl: null,
       color: c.color,
       isDefault: true,
       sortOrder: c.sortOrder,
+      excludeFromTop: false,
     });
   }
   await batch.commit();
+  return accRef.id;
 }
 
 /** Add this device's anonymous UID to an existing workspace's allowlist. */
@@ -114,7 +175,7 @@ export async function updateBaseCurrency(workspaceId: string, baseCurrency: stri
 export async function updateAccountProfile(
   workspaceId: string,
   accountId: string,
-  patch: { name?: string; color?: string; avatar?: string | null },
+  patch: { name?: string; color?: string; avatar?: string | null; baseCurrency?: string },
 ): Promise<void> {
   const { db } = getFirebase();
   await updateDoc(doc(db, WORKSPACES, workspaceId, 'accounts', accountId), patch);

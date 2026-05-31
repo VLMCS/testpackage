@@ -36,6 +36,7 @@ interface SessionContextValue {
   pairDevice: (passphrase: string) => Promise<void>;
   unlockWithPin: (accountId: AccountId, pin: string) => Promise<boolean>;
   setupPinAndBalance: (accountId: AccountId, pin: string, startingBalanceCents: number) => Promise<void>;
+  activateAccount: (accountId: AccountId) => void;
   lock: () => void;
 }
 
@@ -52,13 +53,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [uid, setUid] = useState<string | null>(null);
   const [workspaceId, setWorkspaceId] = useState<string | null>(null);
-  const [baseCurrency, setBaseCurrency] = useState<string>(DEFAULT_CURRENCY);
+  const [workspaceCurrency, setWorkspaceCurrency] = useState<string>(DEFAULT_CURRENCY);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [activeAccountId, setActiveAccountId] = useState<AccountId | null>(null);
   const lastAccountIdRef = useRef<AccountId | null>(
     ((): AccountId | null => {
       const v = localStorage.getItem(STORAGE_KEYS.lastAccount);
-      return v === 'jan' || v === 'aki' ? v : null;
+      return v && v.length > 0 ? v : null;
     })(),
   );
 
@@ -118,10 +119,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!workspaceId) return;
     const unsubWs = subscribeWorkspace(workspaceId, (ws) => {
-      if (ws) setBaseCurrency(ws.baseCurrency || DEFAULT_CURRENCY);
+      if (ws) setWorkspaceCurrency(ws.baseCurrency || DEFAULT_CURRENCY);
     });
     const unsubAcc = subscribeAccounts(workspaceId, (accs) => {
-      setAccounts([...accs].sort((a, b) => a.id.localeCompare(b.id)));
+      setAccounts([...accs].sort((a, b) => a.createdAt - b.createdAt));
       setStatus((s) => (s === 'ready' ? s : 'needs-account'));
     });
     return () => {
@@ -192,12 +193,21 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setStatus('ready');
   }
 
+  // Activate a just-created account (PIN already set during creation).
+  function activateAccount(accountId: AccountId): void {
+    setActiveAccountId(accountId);
+    lastAccountIdRef.current = accountId;
+    localStorage.setItem(STORAGE_KEYS.lastAccount, accountId);
+    setStatus('ready');
+  }
+
   function lock(): void {
     setActiveAccountId(null);
     setStatus('needs-account');
   }
 
   const activeAccount = accounts.find((a) => a.id === activeAccountId) ?? null;
+  const baseCurrency = activeAccount?.baseCurrency ?? workspaceCurrency;
 
   const value: SessionContextValue = {
     status,
@@ -212,6 +222,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     pairDevice,
     unlockWithPin,
     setupPinAndBalance,
+    activateAccount,
     lock,
   };
 
