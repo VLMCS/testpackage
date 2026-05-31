@@ -115,7 +115,10 @@ export function MainApp() {
 
   return (
     <div className="mx-auto max-w-md">
-      <header className="sticky top-0 z-30 flex items-center justify-between border-b bg-background/80 px-4 py-2.5 backdrop-blur">
+      <header
+        className="sticky top-0 z-30 flex items-center justify-between border-b bg-background/80 px-4 pb-2.5 backdrop-blur"
+        style={{ paddingTop: 'calc(env(safe-area-inset-top) + 0.625rem)' }}
+      >
         <span className="text-sm font-semibold">Hi, {activeAccount.name}</span>
         <button
           type="button"
