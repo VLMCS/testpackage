@@ -38,7 +38,7 @@ export function CategoryCard({
         )}
       </span>
       <span className="line-clamp-2 text-xs font-medium leading-tight">{category.name}</span>
-      {subtitle && <span className="text-[11px] text-muted-foreground">{subtitle}</span>}
+      {subtitle && <span className="text-[11px] font-bold text-foreground">{subtitle}</span>}
     </button>
   );
 }

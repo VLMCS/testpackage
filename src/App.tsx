@@ -63,7 +63,7 @@ function ReadyApp() {
 export default function App() {
   if (!isFirebaseConfigured()) {
     return (
-      <div className="min-h-full bg-gradient-to-b from-background to-muted/30">
+      <div className="min-h-full">
         <Centered>
           <Card className="border-amber-500/50">
             <CardHeader>
@@ -85,7 +85,7 @@ export default function App() {
 
   return (
     <SessionProvider>
-      <div className="min-h-full bg-gradient-to-b from-background to-muted/30">
+      <div className="min-h-full">
         <Router />
       </div>
     </SessionProvider>

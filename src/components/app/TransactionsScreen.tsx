@@ -113,12 +113,17 @@ export function TransactionsScreen() {
               onClear={() => setSelection({ start: null, end: null })}
             />
           )}
-          {catFilter.size > 0 && (
-            <FilterChip
-              label={`${catFilter.size} categor${catFilter.size === 1 ? 'y' : 'ies'}`}
-              onClear={() => setCatFilter(new Set())}
-            />
-          )}
+          {[...catFilter].map((id) => {
+            const c = categories.find((x) => x.id === id);
+            return (
+              <FilterChip
+                key={id}
+                label={c?.name ?? 'Category'}
+                color={c?.color}
+                onClear={() => toggleCat(id)}
+              />
+            );
+          })}
         </div>
       )}
 
@@ -173,13 +178,22 @@ export function TransactionsScreen() {
   );
 }
 
-function FilterChip({ label, onClear }: { label: string; onClear: () => void }) {
+function FilterChip({
+  label,
+  color,
+  onClear,
+}: {
+  label: string;
+  color?: string;
+  onClear: () => void;
+}) {
   return (
     <button
       type="button"
       onClick={onClear}
       className="flex items-center gap-1.5 rounded-full border bg-muted/50 px-3 py-1 text-xs"
     >
+      {color && <span className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />}
       <span className="font-medium">{label}</span>
       <X className="h-3.5 w-3.5 text-muted-foreground" />
     </button>

@@ -24,8 +24,8 @@ export function applyAccent(hex: string | null | undefined): void {
   const solid = hslStr(hsl);
   root.style.setProperty('--primary', solid);
   root.style.setProperty('--ring', solid);
-  root.style.setProperty('--primary-from', hslStr(shift(hsl, 18, 12)));
-  root.style.setProperty('--primary-to', hslStr(shift(hsl, -10, -4)));
+  root.style.setProperty('--primary-from', hslStr(shift(hsl, 7, 7)));
+  root.style.setProperty('--primary-to', hslStr(shift(hsl, -4, -3)));
   root.style.setProperty('--primary-foreground', hsl.l > 62 ? '222.2 47.4% 11.2%' : '210 40% 98%');
 }
 
@@ -33,7 +33,7 @@ export function applyAccent(hex: string | null | undefined): void {
 export function gradientFromHex(hex: string): string {
   const hsl = hexToHsl(hex);
   if (!hsl) return hex;
-  return `linear-gradient(135deg, hsl(${hslStr(shift(hsl, 18, 12))}), hsl(${hslStr(shift(hsl, -10, -4))}))`;
+  return `linear-gradient(135deg, hsl(${hslStr(shift(hsl, 7, 7))}), hsl(${hslStr(shift(hsl, -4, -3))}))`;
 }
 
 /** True if text on this background should be dark. */
