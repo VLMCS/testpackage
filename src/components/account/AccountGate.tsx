@@ -36,7 +36,13 @@ export function AccountGate() {
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="mx-auto flex min-h-full max-w-md flex-col justify-center gap-6 p-4">
+    <div
+      className="mx-auto flex min-h-full max-w-md flex-col justify-center gap-6 px-4"
+      style={{
+        paddingTop: 'calc(env(safe-area-inset-top) + 1rem)',
+        paddingBottom: 'calc(env(safe-area-inset-bottom) + 1rem)',
+      }}
+    >
       {children}
     </div>
   );

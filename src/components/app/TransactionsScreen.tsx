@@ -155,7 +155,9 @@ export function TransactionsScreen() {
           </DialogHeader>
           <div className="max-h-[55vh] overflow-y-auto pr-1">
             <CategoryGrid>
-              {myCats.map((c) => (
+              {myCats
+                .filter((c) => c.type !== 'recurring')
+                .map((c) => (
                 <CategoryCard
                   key={c.id}
                   category={c}

@@ -9,7 +9,13 @@ import { AlertCircle, Loader2 } from 'lucide-react';
 
 function Centered({ children }: { children: React.ReactNode }) {
   return (
-    <div className="mx-auto flex min-h-full max-w-md flex-col items-center justify-center gap-3 p-4 text-center">
+    <div
+      className="mx-auto flex min-h-full max-w-md flex-col items-center justify-center gap-3 px-4 text-center"
+      style={{
+        paddingTop: 'calc(env(safe-area-inset-top) + 1rem)',
+        paddingBottom: 'calc(env(safe-area-inset-bottom) + 1rem)',
+      }}
+    >
       {children}
     </div>
   );

@@ -60,6 +60,6 @@ export const DEFAULT_CATEGORIES: CategorySeed[] = [
   { name: 'Self-care', type: 'expense', icon: 'Smile', color: '#e11d48', sortOrder: 3 },
   { name: 'Shopping', type: 'expense', icon: 'ShoppingBag', color: '#d97706', sortOrder: 4 },
   { name: 'Health', type: 'expense', icon: 'HeartPulse', color: '#dc2626', sortOrder: 5 },
-  // Recurring (special category — carries over month to month, Phase 4)
-  { name: 'Recurring', type: 'recurring', icon: 'Repeat', color: '#4f46e5', sortOrder: 0 },
 ];
+// Note: recurring is a behavior (a repeating bill filed under a real expense
+// category), NOT its own category — so nothing of type 'recurring' is seeded.

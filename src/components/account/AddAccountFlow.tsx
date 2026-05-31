@@ -97,7 +97,13 @@ export function AddAccountFlow({ onBack }: { onBack: () => void }) {
   }
 
   return (
-    <div className="mx-auto flex min-h-full max-w-md flex-col justify-center gap-6 p-4">
+    <div
+      className="mx-auto flex min-h-full max-w-md flex-col justify-center gap-6 px-4"
+      style={{
+        paddingTop: 'calc(env(safe-area-inset-top) + 1rem)',
+        paddingBottom: 'calc(env(safe-area-inset-bottom) + 1rem)',
+      }}
+    >
       <div className="flex items-center gap-2">
         <Button variant="ghost" size="icon" onClick={onBack} aria-label="Back">
           <ArrowLeft className="h-5 w-5" />

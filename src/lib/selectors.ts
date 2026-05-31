@@ -69,7 +69,7 @@ export function topSpendingCategories(
   const rows: CategorySpend[] = [];
   for (const [id, cents] of Object.entries(map)) {
     const category = byId.get(id);
-    if (!category || category.excludeFromTop) continue;
+    if (!category || category.excludeFromTop || category.type === 'recurring') continue;
     rows.push({ category, cents });
   }
   rows.sort((a, b) => b.cents - a.cents);

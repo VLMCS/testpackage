@@ -33,10 +33,9 @@ export function RecurringEditorDialog({
   categories: Category[];
   editing: RecurringTemplate | null;
 }) {
-  // A bill can be filed under any expense category, or the generic Recurring one.
-  const selectable = categories.filter((c) => c.type === 'expense' || c.type === 'recurring');
-  const fallbackCategoryId =
-    selectable.find((c) => c.type === 'recurring')?.id ?? selectable[0]?.id ?? '';
+  // A recurring bill is filed under a real expense category.
+  const selectable = categories.filter((c) => c.type === 'expense');
+  const fallbackCategoryId = selectable[0]?.id ?? '';
 
   const [name, setName] = useState('');
   const [amount, setAmount] = useState('');
@@ -51,7 +50,11 @@ export function RecurringEditorDialog({
       setName(editing.name);
       setAmount((editing.amountCents / 100).toString());
       setNote(editing.note);
-      setCategoryId(editing.categoryId ?? fallbackCategoryId);
+      setCategoryId(
+        editing.categoryId && selectable.some((c) => c.id === editing.categoryId)
+          ? editing.categoryId
+          : fallbackCategoryId,
+      );
     } else {
       setName('');
       setAmount('');
@@ -72,6 +75,10 @@ export function RecurringEditorDialog({
     const cents = parseAmountToCents(amount);
     if (cents === null || cents <= 0) {
       setErr('Enter an amount greater than 0.');
+      return;
+    }
+    if (!categoryId || !selectable.some((c) => c.id === categoryId)) {
+      setErr('Pick a category for this bill.');
       return;
     }
     setBusy(true);
@@ -151,18 +158,24 @@ export function RecurringEditorDialog({
             When ticked, this bill is recorded under this category (so it shows in that category's
             spending and analytics).
           </p>
-          <div className="max-h-44 overflow-y-auto pr-1">
-            <CategoryGrid>
-              {selectable.map((c) => (
-                <CategoryCard
-                  key={c.id}
-                  category={c}
-                  selected={categoryId === c.id}
-                  onClick={() => setCategoryId(c.id)}
-                />
-              ))}
-            </CategoryGrid>
-          </div>
+          {selectable.length === 0 ? (
+            <p className="rounded-lg border border-dashed p-3 text-sm text-muted-foreground">
+              You have no expense categories yet. Add one in the Categories tab first.
+            </p>
+          ) : (
+            <div className="max-h-44 overflow-y-auto pr-1">
+              <CategoryGrid>
+                {selectable.map((c) => (
+                  <CategoryCard
+                    key={c.id}
+                    category={c}
+                    selected={categoryId === c.id}
+                    onClick={() => setCategoryId(c.id)}
+                  />
+                ))}
+              </CategoryGrid>
+            </div>
+          )}
         </div>
 
         <div className="space-y-2">
@@ -190,7 +203,7 @@ export function RecurringEditorDialog({
               <Trash2 className="h-5 w-5 text-destructive" />
             </Button>
           )}
-          <Button className="flex-1" onClick={save} disabled={busy}>
+          <Button className="flex-1" onClick={save} disabled={busy || selectable.length === 0}>
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : editing ? 'Save changes' : 'Add bill'}
           </Button>
         </div>

@@ -22,7 +22,6 @@ export function RecurringScreen() {
 
   const accId = activeAccount?.id ?? '';
   const myCats = useMemo(() => categories.filter((c) => c.accountId === accId), [categories, accId]);
-  const recurringCat = myCats.find((c) => c.type === 'recurring');
   const catById = useMemo(() => new Map(myCats.map((c) => [c.id, c])), [myCats]);
 
   const mine = useMemo(
@@ -51,25 +50,43 @@ export function RecurringScreen() {
 
   async function toggle(t: RecurringTemplate) {
     if (busyId) return;
+    const existing = checkedTxn[t.id];
+
+    // Unticking never needs a category — just remove the expense.
+    if (existing) {
+      setBusyId(t.id);
+      try {
+        await deleteTransaction(wsId, existing);
+      } finally {
+        setBusyId(null);
+      }
+      return;
+    }
+
+    // Ticking requires the bill to be filed under a real expense category.
+    if (!t.categoryId) {
+      setEditing(t);
+      return;
+    }
+    const cat = catById.get(t.categoryId);
+    if (!cat || cat.type !== 'expense') {
+      setEditing(t);
+      return;
+    }
     setBusyId(t.id);
     try {
-      const existing = checkedTxn[t.id];
-      if (existing) {
-        await deleteTransaction(wsId, existing);
-      } else {
-        await addTransaction(wsId, {
-          accountId: account.id,
-          categoryId: t.categoryId ?? recurringCat?.id ?? '',
-          type: 'expense',
-          amountCents: t.amountCents,
-          date: `${month}-01`,
-          note: t.name,
-          createdAt: Date.now(),
-          createdBy: account.id,
-          recurringTemplateId: t.id,
-          recurringMonth: month,
-        });
-      }
+      await addTransaction(wsId, {
+        accountId: account.id,
+        categoryId: t.categoryId,
+        type: 'expense',
+        amountCents: t.amountCents,
+        date: `${month}-01`,
+        note: t.name,
+        createdAt: Date.now(),
+        createdBy: account.id,
+        recurringTemplateId: t.id,
+        recurringMonth: month,
+      });
     } finally {
       setBusyId(null);
     }
@@ -131,11 +148,13 @@ export function RecurringScreen() {
         <div className="divide-y overflow-hidden rounded-xl border bg-card">
           {mine.map((t) => {
             const checked = Boolean(checkedTxn[t.id]);
+            const cat = t.categoryId ? catById.get(t.categoryId) : undefined;
+            const needsCategory = !cat || cat.type !== 'expense';
             return (
               <div key={t.id} className="flex items-center gap-3 p-3">
                 <Checkbox
                   checked={checked}
-                  disabled={busyId === t.id}
+                  disabled={busyId === t.id || (needsCategory && !checked)}
                   onCheckedChange={() => toggle(t)}
                   aria-label={`Mark ${t.name} as paid`}
                 />
@@ -152,23 +171,20 @@ export function RecurringScreen() {
                   >
                     {t.name}
                   </span>
-                  {(() => {
-                    const cat = catById.get(t.categoryId ?? '') ?? recurringCat;
-                    return (
-                      <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                        {cat && (
-                          <span
-                            className="h-2 w-2 shrink-0 rounded-full"
-                            style={{ backgroundColor: cat.color }}
-                          />
-                        )}
-                        <span className="truncate">
-                          {cat?.name ?? 'Recurring'}
-                          {t.note ? ` · ${t.note}` : ''}
-                        </span>
+                  {needsCategory ? (
+                    <span className="text-xs font-medium text-amber-600">Tap to set a category</span>
+                  ) : cat ? (
+                    <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <span
+                        className="h-2 w-2 shrink-0 rounded-full"
+                        style={{ backgroundColor: cat.color }}
+                      />
+                      <span className="truncate">
+                        {cat.name}
+                        {t.note ? ` · ${t.note}` : ''}
                       </span>
-                    );
-                  })()}
+                    </span>
+                  ) : null}
                 </button>
                 <span className="shrink-0 text-sm font-semibold tabular-nums">
                   {formatCents(t.amountCents, baseCurrency)}

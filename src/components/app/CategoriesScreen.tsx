@@ -39,7 +39,6 @@ export function CategoriesScreen() {
   const mine = categories.filter((c) => c.accountId === accId);
   const expense = mine.filter((c) => c.type === 'expense');
   const income = mine.filter((c) => c.type === 'income');
-  const recurring = mine.filter((c) => c.type === 'recurring');
 
   const open = editing !== null || addType !== null;
 
@@ -64,20 +63,6 @@ export function CategoriesScreen() {
           <AddTile onClick={() => setAddType('income')} />
         </CategoryGrid>
       </Section>
-
-      {recurring.length > 0 && (
-        <Section title="Recurring">
-          <CategoryGrid>
-            {recurring.map((c) => (
-              <CategoryCard key={c.id} category={c} subtitle={subtitleFor(c)} onClick={() => setEditing(c)} />
-            ))}
-          </CategoryGrid>
-          <p className="px-1 text-xs text-muted-foreground">
-            Manage the bills themselves in the Recurring tab. Tap here to recolor, change the icon,
-            or turn off "Count toward Top Category".
-          </p>
-        </Section>
-      )}
 
       <CategoryEditorDialog
         open={open}
