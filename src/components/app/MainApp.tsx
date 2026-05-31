@@ -1,10 +1,18 @@
-import { lazy, Suspense, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { useSession } from '@/hooks/useSession';
 import { useData } from '@/hooks/useData';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { Dashboard } from './Dashboard';
 import { BottomNav, type Tab } from './BottomNav';
 import { AddTransactionDialog } from '@/components/transactions/AddTransactionDialog';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { gradientFromHex } from '@/lib/theme';
 import { Loader2, WifiOff } from 'lucide-react';
 
@@ -34,6 +42,48 @@ export function MainApp() {
   const online = useOnlineStatus();
   const [tab, setTab] = useState<Tab>('home');
   const [addOpen, setAddOpen] = useState(false);
+  const [exitOpen, setExitOpen] = useState(false);
+
+  // Mirror nav state into refs so the mount-once back-handler reads fresh values.
+  const tabRef = useRef(tab);
+  const addOpenRef = useRef(addOpen);
+  const exitOpenRef = useRef(exitOpen);
+  const exitingRef = useRef(false);
+  tabRef.current = tab;
+  addOpenRef.current = addOpen;
+  exitOpenRef.current = exitOpen;
+
+  // Android hardware back button → handled in-app instead of closing the PWA.
+  // We keep exactly one "guard" history entry on top; each back press consumes it
+  // (popstate), we act on the current screen, then re-arm the guard.
+  useEffect(() => {
+    window.history.pushState({ clerune: true }, '');
+    const onPop = () => {
+      if (exitingRef.current) {
+        // Exit confirmed — let the navigation proceed (closes the installed PWA).
+        window.history.back();
+        return;
+      }
+      window.history.pushState({ clerune: true }, ''); // re-arm
+      if (exitOpenRef.current) {
+        setExitOpen(false); // back while the exit prompt is up = cancel
+      } else if (addOpenRef.current) {
+        setAddOpen(false); // back closes the add sheet
+      } else if (tabRef.current !== 'home') {
+        setTab('home'); // back returns to the dashboard
+      } else {
+        setExitOpen(true); // back on home asks to exit
+      }
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+
+  function confirmExit() {
+    exitingRef.current = true;
+    setExitOpen(false);
+    window.history.back();
+  }
 
   if (!activeAccount || !workspaceId) return null;
 
@@ -99,6 +149,23 @@ export function MainApp() {
         accountId={activeAccount.id}
         categories={categories}
       />
+
+      <Dialog open={exitOpen} onOpenChange={setExitOpen}>
+        <DialogContent className="max-w-xs">
+          <DialogHeader>
+            <DialogTitle>Exit Clerune Tracker?</DialogTitle>
+            <DialogDescription>You can reopen it anytime from your home screen.</DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-2">
+            <Button variant="outline" className="flex-1" onClick={() => setExitOpen(false)}>
+              Stay
+            </Button>
+            <Button variant="destructive" className="flex-1" onClick={confirmExit}>
+              Exit
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
