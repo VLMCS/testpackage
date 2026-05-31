@@ -1,7 +1,14 @@
 import { Home, LayoutGrid, Plus, ReceiptText, Repeat } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export type Tab = 'home' | 'activity' | 'recurring' | 'categories' | 'profile' | 'analytics';
+export type Tab =
+  | 'home'
+  | 'activity'
+  | 'recurring'
+  | 'categories'
+  | 'profile'
+  | 'analytics'
+  | 'settings';
 
 export function BottomNav({
   active,

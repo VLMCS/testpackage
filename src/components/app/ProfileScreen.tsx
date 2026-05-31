@@ -6,9 +6,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { currentBalanceCents } from '@/lib/selectors';
 import { formatCents } from '@/lib/money';
-import { Pencil, RefreshCw } from 'lucide-react';
+import { ChevronRight, Pencil, RefreshCw, Settings } from 'lucide-react';
 
-export function ProfileScreen() {
+export function ProfileScreen({ onOpenSettings }: { onOpenSettings: () => void }) {
   const { activeAccount, baseCurrency, workspaceId, lock } = useSession();
   const { transactions } = useData();
   const [editing, setEditing] = useState(false);
@@ -43,18 +43,20 @@ export function ProfileScreen() {
         </CardContent>
       </Card>
 
-      <div className="space-y-2">
-        <p className="px-1 text-sm font-medium text-muted-foreground">Settings</p>
-        <Card>
-          <CardContent className="flex items-center justify-between py-4 text-sm">
-            <span className="text-muted-foreground">Base currency</span>
-            <span className="font-medium">{baseCurrency}</span>
-          </CardContent>
-        </Card>
-        <p className="px-1 text-xs text-muted-foreground">
-          More settings (currency change, dark mode, recurring bills) arrive in upcoming updates.
-        </p>
-      </div>
+      <button
+        type="button"
+        onClick={onOpenSettings}
+        className="flex w-full items-center justify-between rounded-xl border bg-card p-4 text-left shadow-sm transition-colors hover:bg-accent"
+      >
+        <span className="flex items-center gap-3">
+          <Settings className="h-5 w-5 text-muted-foreground" />
+          <span className="font-medium">Settings</span>
+        </span>
+        <span className="flex items-center gap-2 text-sm text-muted-foreground">
+          {baseCurrency}
+          <ChevronRight className="h-5 w-5" />
+        </span>
+      </button>
 
       <Button variant="outline" className="w-full" onClick={lock}>
         <RefreshCw className="h-4 w-4" /> Switch profile

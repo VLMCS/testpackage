@@ -14,6 +14,20 @@ export default defineConfig(({ command }) => ({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Split the large vendor libraries into their own cacheable chunks
+          // (also clears Vite's >500 kB single-chunk warning). Firestore is the
+          // heaviest, so it gets its own chunk separate from auth/app.
+          'firebase-firestore': ['firebase/firestore'],
+          'firebase-core': ['firebase/app', 'firebase/auth'],
+          react: ['react', 'react-dom'],
+        },
+      },
+    },
+  },
   plugins: [
     react(),
     VitePWA({

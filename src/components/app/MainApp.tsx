@@ -1,23 +1,46 @@
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { useSession } from '@/hooks/useSession';
 import { useData } from '@/hooks/useData';
+import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { Dashboard } from './Dashboard';
-import { TransactionsScreen } from './TransactionsScreen';
-import { CategoriesScreen } from './CategoriesScreen';
-import { ProfileScreen } from './ProfileScreen';
-import { AnalyticsScreen } from './AnalyticsScreen';
-import { RecurringScreen } from '@/components/recurring/RecurringScreen';
 import { BottomNav, type Tab } from './BottomNav';
 import { AddTransactionDialog } from '@/components/transactions/AddTransactionDialog';
-import { Loader2 } from 'lucide-react';
+import { Loader2, WifiOff } from 'lucide-react';
+
+// Lazy-load the non-default screens so the initial bundle stays small.
+const TransactionsScreen = lazy(() =>
+  import('./TransactionsScreen').then((m) => ({ default: m.TransactionsScreen })),
+);
+const RecurringScreen = lazy(() =>
+  import('@/components/recurring/RecurringScreen').then((m) => ({ default: m.RecurringScreen })),
+);
+const CategoriesScreen = lazy(() =>
+  import('./CategoriesScreen').then((m) => ({ default: m.CategoriesScreen })),
+);
+const AnalyticsScreen = lazy(() =>
+  import('./AnalyticsScreen').then((m) => ({ default: m.AnalyticsScreen })),
+);
+const ProfileScreen = lazy(() =>
+  import('./ProfileScreen').then((m) => ({ default: m.ProfileScreen })),
+);
+const SettingsScreen = lazy(() =>
+  import('./SettingsScreen').then((m) => ({ default: m.SettingsScreen })),
+);
 
 export function MainApp() {
   const { activeAccount, workspaceId } = useSession();
   const { categories, loading } = useData();
+  const online = useOnlineStatus();
   const [tab, setTab] = useState<Tab>('home');
   const [addOpen, setAddOpen] = useState(false);
 
   if (!activeAccount || !workspaceId) return null;
+
+  const fallback = (
+    <div className="flex justify-center py-24">
+      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+    </div>
+  );
 
   return (
     <div className="mx-auto max-w-md">
@@ -27,7 +50,7 @@ export function MainApp() {
           type="button"
           onClick={() => setTab('profile')}
           aria-label="Profile"
-          className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full text-sm font-semibold text-white ring-offset-background transition-transform active:scale-95"
+          className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full text-sm font-semibold text-white transition-transform active:scale-95"
           style={{ backgroundColor: activeAccount.color }}
         >
           {activeAccount.avatar ? (
@@ -38,13 +61,18 @@ export function MainApp() {
         </button>
       </header>
 
+      {!online && (
+        <div className="flex items-center justify-center gap-2 bg-amber-500/15 px-4 py-1.5 text-xs text-amber-700 dark:text-amber-300">
+          <WifiOff className="h-3.5 w-3.5" />
+          Offline — changes save on this device and sync when you reconnect.
+        </div>
+      )}
+
       <main className="min-h-[calc(100dvh-3.25rem)] px-4 pb-28 pt-4">
         {loading ? (
-          <div className="flex justify-center py-24">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          </div>
+          fallback
         ) : (
-          <>
+          <Suspense fallback={fallback}>
             {tab === 'home' && (
               <Dashboard
                 onViewAll={() => setTab('activity')}
@@ -55,8 +83,9 @@ export function MainApp() {
             {tab === 'recurring' && <RecurringScreen />}
             {tab === 'categories' && <CategoriesScreen />}
             {tab === 'analytics' && <AnalyticsScreen onBack={() => setTab('home')} />}
-            {tab === 'profile' && <ProfileScreen />}
-          </>
+            {tab === 'profile' && <ProfileScreen onOpenSettings={() => setTab('settings')} />}
+            {tab === 'settings' && <SettingsScreen onBack={() => setTab('profile')} />}
+          </Suspense>
         )}
       </main>
 
