@@ -122,8 +122,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       if (ws) setWorkspaceCurrency(ws.baseCurrency || DEFAULT_CURRENCY);
     });
     const unsubAcc = subscribeAccounts(workspaceId, (accs) => {
-      setAccounts([...accs].sort((a, b) => a.createdAt - b.createdAt));
-      setStatus((s) => (s === 'ready' ? s : 'needs-account'));
+      const sorted = [...accs].sort((a, b) => a.createdAt - b.createdAt);
+      setAccounts(sorted);
+      // Restore an unlocked session across a refresh. sessionStorage survives a
+      // reload but is cleared on full app/tab close, so a cold start re-locks.
+      const storedId = sessionStorage.getItem(STORAGE_KEYS.activeSession);
+      const restorable = storedId ? sorted.find((a) => a.id === storedId && a.pinHash) : undefined;
+      setActiveAccountId((cur) => cur ?? (restorable ? restorable.id : null));
+      setStatus((s) => (s === 'ready' || restorable ? 'ready' : 'needs-account'));
     });
     return () => {
       unsubWs();
@@ -174,6 +180,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       setActiveAccountId(accountId);
       lastAccountIdRef.current = accountId;
       localStorage.setItem(STORAGE_KEYS.lastAccount, accountId);
+      sessionStorage.setItem(STORAGE_KEYS.activeSession, accountId);
       setStatus('ready');
     }
     return ok;
@@ -193,6 +200,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setActiveAccountId(accountId);
     lastAccountIdRef.current = accountId;
     localStorage.setItem(STORAGE_KEYS.lastAccount, accountId);
+    sessionStorage.setItem(STORAGE_KEYS.activeSession, accountId);
     setStatus('ready');
   }
 
@@ -201,10 +209,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setActiveAccountId(accountId);
     lastAccountIdRef.current = accountId;
     localStorage.setItem(STORAGE_KEYS.lastAccount, accountId);
+    sessionStorage.setItem(STORAGE_KEYS.activeSession, accountId);
     setStatus('ready');
   }
 
   function lock(): void {
+    sessionStorage.removeItem(STORAGE_KEYS.activeSession);
     setActiveAccountId(null);
     setStatus('needs-account');
   }

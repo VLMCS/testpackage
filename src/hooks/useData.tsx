@@ -9,6 +9,8 @@ interface DataContextValue {
   transactions: Transaction[];
   recurringTemplates: RecurringTemplate[];
   loading: boolean;
+  /** True while local changes are still being synced to the server. */
+  pendingWrites: boolean;
 }
 
 const DataContext = createContext<DataContextValue | null>(null);
@@ -32,19 +34,25 @@ export function DataProvider({
   const [catLoaded, setCatLoaded] = useState(false);
   const [txLoaded, setTxLoaded] = useState(false);
   const [recLoaded, setRecLoaded] = useState(false);
+  const [pendingCat, setPendingCat] = useState(false);
+  const [pendingTx, setPendingTx] = useState(false);
+  const [pendingRec, setPendingRec] = useState(false);
 
   useEffect(() => {
-    const unsubCats = subscribeCategories(workspaceId, (c) => {
+    const unsubCats = subscribeCategories(workspaceId, (c, pending) => {
       setCategories(c);
       setCatLoaded(true);
+      setPendingCat(pending);
     });
-    const unsubTx = subscribeTransactions(workspaceId, (t) => {
+    const unsubTx = subscribeTransactions(workspaceId, (t, pending) => {
       setTransactions(t);
       setTxLoaded(true);
+      setPendingTx(pending);
     });
-    const unsubRec = subscribeTemplates(workspaceId, (r) => {
+    const unsubRec = subscribeTemplates(workspaceId, (r, pending) => {
       setRecurringTemplates(r);
       setRecLoaded(true);
+      setPendingRec(pending);
     });
     return () => {
       unsubCats();
@@ -60,6 +68,7 @@ export function DataProvider({
         transactions,
         recurringTemplates,
         loading: !(catLoaded && txLoaded && recLoaded),
+        pendingWrites: pendingCat || pendingTx || pendingRec,
       }}
     >
       {children}

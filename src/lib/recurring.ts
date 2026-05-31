@@ -37,13 +37,13 @@ export async function deleteTemplate(workspaceId: string, id: string): Promise<v
 
 export function subscribeTemplates(
   workspaceId: string,
-  cb: (templates: RecurringTemplate[]) => void,
+  cb: (templates: RecurringTemplate[], hasPendingWrites: boolean) => void,
 ): () => void {
-  return onSnapshot(templatesCol(workspaceId), (snap) => {
+  return onSnapshot(templatesCol(workspaceId), { includeMetadataChanges: true }, (snap) => {
     const items = snap.docs.map(
       (d) => ({ id: d.id, ...(d.data() as Omit<RecurringTemplate, 'id'>) }),
     );
     items.sort((a, b) => a.createdAt - b.createdAt);
-    cb(items);
+    cb(items, snap.metadata.hasPendingWrites);
   });
 }

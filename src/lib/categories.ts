@@ -37,15 +37,15 @@ export async function deleteCategory(workspaceId: string, id: string): Promise<v
 
 export function subscribeCategories(
   workspaceId: string,
-  cb: (categories: Category[]) => void,
+  cb: (categories: Category[], hasPendingWrites: boolean) => void,
 ): () => void {
-  return onSnapshot(categoriesCol(workspaceId), (snap) => {
+  return onSnapshot(categoriesCol(workspaceId), { includeMetadataChanges: true }, (snap) => {
     const cats = snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Category, 'id'>) }));
     cats.sort((a, b) => {
       if (a.type !== b.type) return a.type.localeCompare(b.type);
       if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;
       return a.name.localeCompare(b.name);
     });
-    cb(cats);
+    cb(cats, snap.metadata.hasPendingWrites);
   });
 }

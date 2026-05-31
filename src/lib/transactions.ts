@@ -37,15 +37,15 @@ export async function deleteTransaction(workspaceId: string, id: string): Promis
 
 export function subscribeTransactions(
   workspaceId: string,
-  cb: (transactions: Transaction[]) => void,
+  cb: (transactions: Transaction[], hasPendingWrites: boolean) => void,
 ): () => void {
-  return onSnapshot(transactionsCol(workspaceId), (snap) => {
+  return onSnapshot(transactionsCol(workspaceId), { includeMetadataChanges: true }, (snap) => {
     const txns = snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Transaction, 'id'>) }));
     // Newest first: by date, then by creation time.
     txns.sort((a, b) => {
       if (a.date !== b.date) return a.date < b.date ? 1 : -1;
       return b.createdAt - a.createdAt;
     });
-    cb(txns);
+    cb(txns, snap.metadata.hasPendingWrites);
   });
 }

@@ -4,6 +4,9 @@ export const STORAGE_KEYS = {
   workspaceId: 'budget.workspaceId',
   lastAccount: 'budget.lastAccount',
   theme: 'budget.theme',
+  // sessionStorage (NOT localStorage): keeps the unlocked profile across a
+  // refresh, but clears on full app/tab close so a cold launch re-asks the PIN.
+  activeSession: 'budget.activeSession',
 } as const;
 
 export const DEFAULT_CURRENCY = 'USD';

@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/dialog';
 import { gradientFromHex } from '@/lib/theme';
 import { migrateCategoriesPerAccount } from '@/lib/migrate';
-import { Loader2, WifiOff } from 'lucide-react';
+import { Check, Loader2, WifiOff } from 'lucide-react';
 
 // Lazy-load the non-default screens so the initial bundle stays small.
 const TransactionsScreen = lazy(() =>
@@ -39,7 +39,7 @@ const SettingsScreen = lazy(() =>
 
 export function MainApp() {
   const { activeAccount, accounts, workspaceId } = useSession();
-  const { categories, transactions, recurringTemplates, loading } = useData();
+  const { categories, transactions, recurringTemplates, loading, pendingWrites } = useData();
   const online = useOnlineStatus();
   const [tab, setTab] = useState<Tab>('home');
   const [addOpen, setAddOpen] = useState(false);
@@ -119,12 +119,17 @@ export function MainApp() {
         className="sticky top-0 z-30 flex items-center justify-between border-b bg-background/80 px-4 pb-2.5 backdrop-blur"
         style={{ paddingTop: 'calc(env(safe-area-inset-top) + 0.625rem)' }}
       >
-        <span className="text-sm font-semibold">Hi, {activeAccount.name}</span>
+        <div className="min-w-0">
+          <span className="block truncate text-sm font-semibold leading-tight">
+            Hi, {activeAccount.name}
+          </span>
+          <SyncStatus online={online} pending={pendingWrites} />
+        </div>
         <button
           type="button"
           onClick={() => setTab('profile')}
           aria-label="Profile"
-          className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full text-sm font-semibold text-white transition-transform active:scale-95"
+          className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full text-sm font-semibold text-white transition-transform active:scale-95"
           style={{ backgroundImage: gradientFromHex(activeAccount.color) }}
         >
           {activeAccount.avatar ? (
@@ -134,13 +139,6 @@ export function MainApp() {
           )}
         </button>
       </header>
-
-      {!online && (
-        <div className="flex items-center justify-center gap-2 bg-amber-500/15 px-4 py-1.5 text-xs text-amber-700 dark:text-amber-300">
-          <WifiOff className="h-3.5 w-3.5" />
-          Offline — changes save on this device and sync when you reconnect.
-        </div>
-      )}
 
       <main className="min-h-[calc(100dvh-3.25rem)] px-4 pb-28 pt-4">
         {loading ? (
@@ -190,5 +188,27 @@ export function MainApp() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+function SyncStatus({ online, pending }: { online: boolean; pending: boolean }) {
+  if (!online) {
+    return (
+      <span className="flex items-center gap-1 text-[11px] text-amber-600 dark:text-amber-400">
+        <WifiOff className="h-3 w-3" /> Offline — saved on device
+      </span>
+    );
+  }
+  if (pending) {
+    return (
+      <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+        <Loader2 className="h-3 w-3 animate-spin" /> Syncing…
+      </span>
+    );
+  }
+  return (
+    <span className="flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400">
+      <Check className="h-3 w-3" /> All changes saved
+    </span>
   );
 }
