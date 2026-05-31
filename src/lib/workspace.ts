@@ -111,11 +111,11 @@ export async function updateBaseCurrency(workspaceId: string, baseCurrency: stri
   await updateDoc(doc(db, WORKSPACES, workspaceId), { baseCurrency });
 }
 
-export async function renameAccount(
+export async function updateAccountProfile(
   workspaceId: string,
   accountId: string,
-  name: string,
+  patch: { name?: string; color?: string; avatar?: string | null },
 ): Promise<void> {
   const { db } = getFirebase();
-  await updateDoc(doc(db, WORKSPACES, workspaceId, 'accounts', accountId), { name });
+  await updateDoc(doc(db, WORKSPACES, workspaceId, 'accounts', accountId), patch);
 }

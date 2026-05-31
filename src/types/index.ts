@@ -4,6 +4,7 @@ export type Account = {
   id: AccountId;
   name: string;
   color: string;
+  avatar?: string | null; // data URL for a custom profile picture (compressed)
   startingBalanceCents: number | null;
   pinHash: string | null;
   pinSalt: string | null;
@@ -26,9 +27,11 @@ export type Category = {
   id: string;
   name: string;
   type: CategoryType;
-  icon: string;
+  icon: string; // lucide-react icon name (used when imageUrl is absent)
+  imageUrl?: string | null; // custom uploaded icon (compressed data URL), overrides `icon`
   color: string;
   isDefault: boolean;
+  sortOrder: number;
 };
 
 export type Transaction = {

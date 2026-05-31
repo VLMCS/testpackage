@@ -18,6 +18,7 @@ import {
   setAccountPinAndBalance,
 } from '@/lib/workspace';
 import { STORAGE_KEYS, DEFAULT_CURRENCY } from '@/lib/constants';
+import { applyAccent } from '@/lib/theme';
 import type { Account, AccountId } from '@/types';
 
 type Status = 'initializing' | 'needs-workspace' | 'needs-account' | 'ready' | 'error';
@@ -128,6 +129,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       unsubAcc();
     };
   }, [workspaceId]);
+
+  // Re-tint the app with the active profile's accent color (cleared when locked).
+  useEffect(() => {
+    const acc = accounts.find((a) => a.id === activeAccountId);
+    applyAccent(acc?.color ?? null);
+  }, [accounts, activeAccountId]);
 
   async function setupWorkspace(passphrase: string): Promise<void> {
     if (!uid) throw new Error('Still connecting — wait a moment and try again.');

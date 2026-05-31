@@ -1,7 +1,8 @@
 import { SessionProvider, useSession } from '@/hooks/useSession';
+import { DataProvider } from '@/hooks/useData';
 import { SetupOrPair } from '@/components/setup/SetupOrPair';
 import { AccountGate } from '@/components/account/AccountGate';
-import { AppShell } from '@/components/AppShell';
+import { MainApp } from '@/components/app/MainApp';
 import { isFirebaseConfigured } from '@/lib/firebase';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertCircle, Loader2 } from 'lucide-react';
@@ -46,7 +47,17 @@ function Router() {
 
   if (status === 'needs-workspace') return <SetupOrPair />;
   if (status === 'needs-account') return <AccountGate />;
-  return <AppShell />;
+  return <ReadyApp />;
+}
+
+function ReadyApp() {
+  const { workspaceId } = useSession();
+  if (!workspaceId) return null;
+  return (
+    <DataProvider workspaceId={workspaceId}>
+      <MainApp />
+    </DataProvider>
+  );
 }
 
 export default function App() {

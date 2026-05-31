@@ -65,10 +65,14 @@ function AccountPicker({
               className="flex w-full items-center gap-4 rounded-xl border bg-card p-4 text-left shadow-sm transition-colors hover:bg-accent"
             >
               <span
-                className="flex h-12 w-12 items-center justify-center rounded-full text-lg font-semibold text-white"
+                className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full text-lg font-semibold text-white"
                 style={{ backgroundColor: acc.color }}
               >
-                {acc.name.charAt(0).toUpperCase()}
+                {acc.avatar ? (
+                  <img src={acc.avatar} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  acc.name.charAt(0).toUpperCase()
+                )}
               </span>
               <span className="flex-1">
                 <span className="block font-medium">{acc.name}</span>
