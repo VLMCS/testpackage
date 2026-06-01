@@ -14,7 +14,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { gradientFromHex } from '@/lib/theme';
-import { migrateCategoriesPerAccount } from '@/lib/migrate';
+import { migrateCategoriesPerAccount, dedupeCategories } from '@/lib/migrate';
 import { Check, Loader2, WifiOff } from 'lucide-react';
 
 // Lazy-load the non-default screens so the initial bundle stays small.
@@ -92,13 +92,17 @@ export function MainApp() {
   useEffect(() => {
     if (loading || migratedRef.current || !workspaceId || accounts.length === 0) return;
     migratedRef.current = true;
-    void migrateCategoriesPerAccount(
-      workspaceId,
-      accounts,
-      categories,
-      transactions,
-      recurringTemplates,
-    ).catch(() => {
+    void (async () => {
+      // v2: per-account category copies. v3: merge exact duplicates.
+      await migrateCategoriesPerAccount(
+        workspaceId,
+        accounts,
+        categories,
+        transactions,
+        recurringTemplates,
+      );
+      await dedupeCategories(workspaceId, categories, transactions, recurringTemplates);
+    })().catch(() => {
       migratedRef.current = false; // allow a retry next render if it failed
     });
   }, [loading, workspaceId, accounts, categories, transactions, recurringTemplates]);

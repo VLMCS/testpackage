@@ -34,7 +34,7 @@ export async function createWorkspace(workspaceId: string, uid: string): Promise
     allowedUids: [uid],
     baseCurrency: DEFAULT_CURRENCY,
     createdAt: now,
-    schemaVersion: 2,
+    schemaVersion: 3,
   };
   await setDoc(doc(db, WORKSPACES, workspaceId), workspace);
 

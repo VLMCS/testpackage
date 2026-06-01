@@ -82,3 +82,85 @@ export async function migrateCategoriesPerAccount(
 
   return true;
 }
+
+/**
+ * Merge exact-duplicate categories within each account. Early testing seeded the
+ * default category set more than once, so some accounts ended up with several
+ * identical copies (e.g. four "Food / Drinks"). For each group of exact dupes
+ * (same account/type/name/icon/color) we keep one, remap that account's
+ * transactions/templates to it, and delete the rest. Guarded by schemaVersion 3.
+ *
+ * Returns true if anything was merged.
+ */
+export async function dedupeCategories(
+  workspaceId: string,
+  categories: Category[],
+  transactions: Transaction[],
+  templates: RecurringTemplate[],
+): Promise<boolean> {
+  const ws = await fetchWorkspace(workspaceId);
+  if (!ws || (ws.schemaVersion ?? 1) >= 3) return false;
+  const { db } = getFirebase();
+
+  const groups = new Map<string, Category[]>();
+  for (const c of categories) {
+    if (!c.accountId) continue; // ignore legacy orphans (already hidden)
+    const key = [c.accountId, c.type, c.name, c.icon, c.color].join('||');
+    const arr = groups.get(key);
+    if (arr) arr.push(c);
+    else groups.set(key, [c]);
+  }
+
+  const remap = new Map<string, string>(); // duplicateId -> keptId
+  const toDelete: string[] = [];
+  for (const arr of groups.values()) {
+    if (arr.length <= 1) continue;
+    arr.sort((a, b) => a.id.localeCompare(b.id));
+    const keptId = arr[0].id;
+    for (const dup of arr.slice(1)) {
+      remap.set(dup.id, keptId);
+      toDelete.push(dup.id);
+    }
+  }
+
+  if (toDelete.length === 0) {
+    const b = writeBatch(db);
+    b.update(doc(db, WORKSPACES, workspaceId), { schemaVersion: 3 });
+    await b.commit();
+    return false;
+  }
+
+  // Remaps first, then deletes (so no transaction is briefly orphaned).
+  const writers: Array<(b: WriteBatch) => void> = [];
+  for (const t of transactions) {
+    const keptId = remap.get(t.categoryId);
+    if (keptId) {
+      const ref = doc(db, WORKSPACES, workspaceId, 'transactions', t.id);
+      writers.push((b) => b.update(ref, { categoryId: keptId }));
+    }
+  }
+  for (const r of templates) {
+    if (!r.categoryId) continue;
+    const keptId = remap.get(r.categoryId);
+    if (keptId) {
+      const ref = doc(db, WORKSPACES, workspaceId, 'recurring_templates', r.id);
+      writers.push((b) => b.update(ref, { categoryId: keptId }));
+    }
+  }
+  for (const id of toDelete) {
+    const ref = doc(db, WORKSPACES, workspaceId, 'categories', id);
+    writers.push((b) => b.delete(ref));
+  }
+
+  for (let i = 0; i < writers.length; i += 400) {
+    const batch = writeBatch(db);
+    for (const w of writers.slice(i, i + 400)) w(batch);
+    await batch.commit();
+  }
+
+  const finalBatch = writeBatch(db);
+  finalBatch.update(doc(db, WORKSPACES, workspaceId), { schemaVersion: 3 });
+  await finalBatch.commit();
+
+  return true;
+}
