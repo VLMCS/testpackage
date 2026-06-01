@@ -141,7 +141,7 @@ export function TransactionsScreen() {
         onOpenChange={(o) => !o && setEditing(null)}
         workspaceId={workspaceId}
         accountId={editing?.accountId ?? activeAccount.id}
-        categories={categories}
+        categories={myCats}
         editing={editing}
       />
 
