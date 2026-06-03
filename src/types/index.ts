@@ -67,7 +67,11 @@ export type RecurringTemplate = {
   // Falls back to the special Recurring category when unset (older templates).
   categoryId?: string;
   name: string;
+  // The default amount used for any month that doesn't have an override below.
   amountCents: number;
+  // Per-month amount overrides keyed by month (yyyy-MM). When a key is present,
+  // it replaces amountCents for that month only (e.g. electricity spikes in June).
+  monthlyAmounts?: Record<string, number>;
   note: string;
   active: boolean;
   createdAt: number;
