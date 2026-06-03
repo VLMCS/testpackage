@@ -5,7 +5,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { RecurringEditorDialog } from './RecurringEditorDialog';
-import { MonthlyAmountDialog } from './MonthlyAmountDialog';
 import { addTransaction, deleteTransaction } from '@/lib/transactions';
 import { effectiveAmountCents } from '@/lib/recurring';
 import { formatCents } from '@/lib/money';
@@ -20,7 +19,6 @@ export function RecurringScreen() {
   const [month, setMonth] = useState(currentMonthKey());
   const [editing, setEditing] = useState<RecurringTemplate | null>(null);
   const [adding, setAdding] = useState(false);
-  const [amountEditing, setAmountEditing] = useState<RecurringTemplate | null>(null);
 
   const accId = activeAccount?.id ?? '';
   const myCats = useMemo(() => categories.filter((c) => c.accountId === accId), [categories, accId]);
@@ -188,22 +186,19 @@ export function RecurringScreen() {
                     </span>
                   ) : null}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setAmountEditing(t)}
+                <span
                   className={cn(
-                    'shrink-0 rounded-md px-1.5 py-0.5 text-sm font-semibold tabular-nums hover:bg-accent',
+                    'shrink-0 text-sm font-semibold tabular-nums',
                     hasOverride && 'text-primary',
                   )}
-                  aria-label={`Edit amount for ${monthLabel(month)}`}
                   title={
                     hasOverride
-                      ? `Override · default ${formatCents(t.amountCents, baseCurrency)}`
-                      : 'Tap to set a different amount for this month'
+                      ? `${monthLabel(month)} override · default ${formatCents(t.amountCents, baseCurrency)}`
+                      : undefined
                   }
                 >
                   {formatCents(monthCents, baseCurrency)}
-                </button>
+                </span>
                 <button
                   type="button"
                   onClick={() => setEditing(t)}
@@ -220,7 +215,8 @@ export function RecurringScreen() {
 
       <p className="px-1 text-xs text-muted-foreground">
         Ticked bills are recorded as expenses for {monthLabel(month)} and appear in your balance and
-        activity. Untick to remove. Tap an amount to set a different value just for this month.
+        activity. Untick to remove. Tap the pencil to edit a bill — including a different amount
+        just for this month.
       </p>
 
       <RecurringEditorDialog
@@ -236,18 +232,8 @@ export function RecurringScreen() {
         baseCurrency={baseCurrency}
         categories={myCats}
         editing={editing}
-      />
-
-      <MonthlyAmountDialog
-        open={amountEditing !== null}
-        onOpenChange={(o) => {
-          if (!o) setAmountEditing(null);
-        }}
-        workspaceId={workspaceId}
-        template={amountEditing}
         monthKey={month}
-        baseCurrency={baseCurrency}
-        tickedTransactionId={amountEditing ? checkedTxn[amountEditing.id] ?? null : null}
+        tickedTransactionId={editing ? checkedTxn[editing.id] ?? null : null}
       />
     </div>
   );
