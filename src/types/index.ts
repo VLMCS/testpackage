@@ -22,6 +22,11 @@ export type Workspace = {
   allowedUids: string[];
   createdAt: number;
   schemaVersion: number;
+  // Admin mode gate. PBKDF2-hashed (see src/lib/crypto.ts) password that protects
+  // destructive actions like deleting a profile. Absent until the first user sets
+  // it up. Shared across paired devices, matching the household trust model.
+  adminHash?: string | null;
+  adminSalt?: string | null;
 };
 
 export type CategoryType = 'income' | 'expense' | 'recurring';

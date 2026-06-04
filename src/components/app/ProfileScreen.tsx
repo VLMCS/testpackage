@@ -2,23 +2,36 @@ import { useState } from 'react';
 import { useSession } from '@/hooks/useSession';
 import { useData } from '@/hooks/useData';
 import { ProfileEditorDialog } from '@/components/profile/ProfileEditorDialog';
+import { AdminModeDialog } from '@/components/profile/AdminModeDialog';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { currentBalanceCents } from '@/lib/selectors';
 import { formatCents } from '@/lib/money';
 import { gradientFromHex } from '@/lib/theme';
-import { ChevronRight, Pencil, RefreshCw, Settings } from 'lucide-react';
+import { ChevronRight, Cog, Pencil, RefreshCw, Settings } from 'lucide-react';
 
 export function ProfileScreen({ onOpenSettings }: { onOpenSettings: () => void }) {
   const { activeAccount, baseCurrency, workspaceId, lock } = useSession();
   const { transactions } = useData();
   const [editing, setEditing] = useState(false);
+  const [adminOpen, setAdminOpen] = useState(false);
 
   if (!activeAccount || !workspaceId) return null;
 
   return (
     <div className="space-y-5">
-      <h1 className="px-1 text-xl font-bold tracking-tight">Profile</h1>
+      <div className="flex items-center justify-between px-1">
+        <h1 className="text-xl font-bold tracking-tight">Profile</h1>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Admin mode"
+          title="Admin mode"
+          onClick={() => setAdminOpen(true)}
+        >
+          <Cog className="h-5 w-5" />
+        </Button>
+      </div>
 
       <Card>
         <CardContent className="flex items-center gap-4 py-5">
@@ -69,6 +82,8 @@ export function ProfileScreen({ onOpenSettings }: { onOpenSettings: () => void }
         workspaceId={workspaceId}
         account={activeAccount}
       />
+
+      <AdminModeDialog open={adminOpen} onOpenChange={setAdminOpen} />
     </div>
   );
 }

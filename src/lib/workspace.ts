@@ -1,10 +1,13 @@
 import {
   doc,
   getDoc,
+  getDocs,
   setDoc,
   updateDoc,
   writeBatch,
   collection,
+  query,
+  where,
   onSnapshot,
   arrayUnion,
 } from 'firebase/firestore';
@@ -182,4 +185,42 @@ export async function updateAccountProfile(
 ): Promise<void> {
   const { db } = getFirebase();
   await updateDoc(doc(db, WORKSPACES, workspaceId, 'accounts', accountId), patch);
+}
+
+/**
+ * Store the admin-mode password hash on the workspace doc. Used both for the
+ * first-time setup and for changing it later. Stored on the shared workspace so
+ * every paired device sees the same admin gate.
+ */
+export async function setAdminPassword(
+  workspaceId: string,
+  hash: string,
+  salt: string,
+): Promise<void> {
+  const { db } = getFirebase();
+  await updateDoc(doc(db, WORKSPACES, workspaceId), { adminHash: hash, adminSalt: salt });
+}
+
+/**
+ * Delete a profile (account) and everything it owns — its categories,
+ * transactions, and recurring templates — so no orphaned data is left behind.
+ * Subcollections are queried by `accountId` and removed in chunked batches
+ * (Firestore caps a batch at 500 writes).
+ */
+export async function deleteAccount(workspaceId: string, accountId: string): Promise<void> {
+  const { db } = getFirebase();
+
+  const owned: ReturnType<typeof doc>[] = [doc(db, WORKSPACES, workspaceId, 'accounts', accountId)];
+  for (const sub of ['categories', 'transactions', 'recurring_templates']) {
+    const snap = await getDocs(
+      query(collection(db, WORKSPACES, workspaceId, sub), where('accountId', '==', accountId)),
+    );
+    for (const d of snap.docs) owned.push(d.ref);
+  }
+
+  for (let i = 0; i < owned.length; i += 450) {
+    const batch = writeBatch(db);
+    for (const ref of owned.slice(i, i + 450)) batch.delete(ref);
+    await batch.commit();
+  }
 }
