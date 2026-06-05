@@ -8,6 +8,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { CategoryGrid } from '@/components/categories/CategoryGrid';
 import { CategoryCard } from '@/components/categories/CategoryCard';
 import { useSession } from '@/hooks/useSession';
@@ -39,6 +40,7 @@ export function AddTransactionDialog({
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState(todayIso());
   const [note, setNote] = useState('');
+  const [notTracked, setNotTracked] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -50,12 +52,14 @@ export function AddTransactionDialog({
       setAmount((editing.amountCents / 100).toString());
       setDate(editing.date);
       setNote(editing.note);
+      setNotTracked(Boolean(editing.notTracked));
     } else {
       setType('expense');
       setCategoryId(null);
       setAmount('');
       setDate(todayIso());
       setNote('');
+      setNotTracked(false);
     }
     setErr(null);
     setBusy(false);
@@ -94,6 +98,7 @@ export function AddTransactionDialog({
           amountCents: cents,
           date,
           note: note.trim(),
+          notTracked,
         })
       : addTransaction(workspaceId, {
           accountId,
@@ -102,6 +107,7 @@ export function AddTransactionDialog({
           amountCents: cents,
           date,
           note: note.trim(),
+          notTracked,
           createdAt: Date.now(),
           createdBy: accountId,
         });
@@ -194,6 +200,17 @@ export function AddTransactionDialog({
             onChange={(e) => setNote(e.target.value)}
             placeholder="e.g. lunch with friends"
           />
+        </div>
+
+        <div className="flex items-center justify-between gap-3 rounded-lg border p-3">
+          <div className="min-w-0 space-y-0.5">
+            <Label htmlFor="notTracked">Not tracked</Label>
+            <p className="text-xs text-muted-foreground">
+              Still changes your balance, but left out of Spending, Saved, and insights — for
+              transfers like moving money to savings.
+            </p>
+          </div>
+          <Switch id="notTracked" checked={notTracked} onCheckedChange={setNotTracked} />
         </div>
 
         {err && <p className="text-sm text-destructive">{err}</p>}

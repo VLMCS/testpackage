@@ -32,6 +32,7 @@ export function ActivityCalendar({
   const netByDay = useMemo(() => {
     const map: Record<string, number> = {};
     for (const t of transactions) {
+      if (t.notTracked) continue; // dots reflect tracked spending/income only
       if (t.date.slice(0, 7) !== monthKey) continue;
       map[t.date] = (map[t.date] ?? 0) + (t.type === 'income' ? t.amountCents : -t.amountCents);
     }

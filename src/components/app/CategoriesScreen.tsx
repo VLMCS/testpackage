@@ -25,6 +25,7 @@ export function CategoriesScreen() {
     const m: Record<string, number> = {};
     for (const t of transactions) {
       if (t.accountId !== accId) continue;
+      if (t.notTracked) continue; // excluded from the per-category month total
       if (monthKeyOf(t.date) !== month) continue;
       m[t.categoryId] = (m[t.categoryId] ?? 0) + t.amountCents;
     }

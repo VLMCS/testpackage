@@ -60,6 +60,11 @@ export type Transaction = {
   // Recurring tab know which template/month a transaction belongs to (and undo it).
   recurringTemplateId?: string | null;
   recurringMonth?: string | null; // 'yyyy-MM'
+  // When true, this transaction is excluded from Spending/Saved totals and category
+  // insights, but STILL moves the account balance (the money really left/arrived).
+  // Use for transfers that aren't real spending — e.g. moving funds to a savings
+  // account. It keeps its normal category. Absent/false on older transactions.
+  notTracked?: boolean;
 };
 
 // A recurring bill definition (rent, Netflix, …) owned by one account. Each month

@@ -16,6 +16,7 @@ export function totalsForMonth(
   let expense = 0;
   for (const t of txns) {
     if (t.accountId !== accountId) continue;
+    if (t.notTracked) continue; // transfers excluded from Spending/Saved (still hit balance)
     if (monthKeyOf(t.date) !== monthKey) continue;
     if (t.type === 'income') income += t.amountCents;
     else expense += t.amountCents;
@@ -23,7 +24,12 @@ export function totalsForMonth(
   return { incomeCents: income, expenseCents: expense, savedCents: income - expense };
 }
 
-/** All-time running balance: opening balance + incomes − expenses. */
+/**
+ * All-time running balance: opening balance + incomes − expenses. Note that
+ * `notTracked` transfers ARE counted here on purpose — the money really moved in
+ * or out of the account, so the balance must reflect it (they're only hidden from
+ * the Spending/Saved metrics).
+ */
 export function currentBalanceCents(account: Account, txns: Transaction[]): number {
   let balance = account.startingBalanceCents ?? 0;
   for (const t of txns) {
@@ -42,6 +48,7 @@ export function spendingByCategory(
   const out: Record<string, number> = {};
   for (const t of txns) {
     if (t.accountId !== accountId || t.type !== 'expense') continue;
+    if (t.notTracked) continue; // transfers don't count toward category spend / rankings
     if (monthKeyOf(t.date) !== monthKey) continue;
     out[t.categoryId] = (out[t.categoryId] ?? 0) + t.amountCents;
   }

@@ -1,3 +1,4 @@
+import { EyeOff } from 'lucide-react';
 import { friendlyDate } from '@/lib/date';
 import { formatCents } from '@/lib/money';
 import { getCategoryIcon } from '@/lib/icons';
@@ -61,8 +62,16 @@ export function TransactionList({
                     )}
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium">
-                      {cat?.name ?? 'Uncategorized'}
+                    <span className="flex items-center gap-1.5">
+                      <span className="truncate text-sm font-medium">
+                        {cat?.name ?? 'Uncategorized'}
+                      </span>
+                      {t.notTracked && (
+                        <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                          <EyeOff className="h-3 w-3" />
+                          Not tracked
+                        </span>
+                      )}
                     </span>
                     {t.note && (
                       <span className="block truncate text-xs text-muted-foreground">{t.note}</span>
