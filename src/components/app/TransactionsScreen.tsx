@@ -15,6 +15,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { currentMonthKey, friendlyDate } from '@/lib/date';
+import { runningBalancesByTxn } from '@/lib/selectors';
 import { CalendarDays, ListFilter, X } from 'lucide-react';
 import type { Transaction } from '@/types';
 
@@ -35,6 +36,13 @@ export function TransactionsScreen() {
     [transactions, accId],
   );
   const myCats = useMemo(() => categories.filter((c) => c.accountId === accId), [categories, accId]);
+
+  // Balance after each transaction, derived from the account's full history so it
+  // stays correct even when the visible list below is filtered by date/category.
+  const balanceAfter = useMemo(
+    () => (activeAccount ? runningBalancesByTxn(activeAccount, own) : {}),
+    [activeAccount, own],
+  );
 
   const visible = useMemo(() => {
     let list = own;
@@ -133,6 +141,7 @@ export function TransactionsScreen() {
         categories={myCats}
         currency={baseCurrency}
         onSelect={setEditing}
+        balanceAfter={balanceAfter}
         emptyLabel={hasFilters ? 'Nothing matches these filters.' : 'No transactions yet — tap + to add one.'}
       />
 

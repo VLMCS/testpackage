@@ -39,6 +39,73 @@ export function currentBalanceCents(account: Account, txns: Transaction[]): numb
   return balance;
 }
 
+/**
+ * Account balance carried into the start of `monthKey` — opening balance plus
+ * every transaction dated in an earlier month, before any of this month's
+ * activity. This is "what you started the month with". Like currentBalanceCents,
+ * it counts notTracked transfers (the money really moved).
+ */
+export function balanceAtMonthStart(
+  account: Account,
+  txns: Transaction[],
+  monthKey: string,
+): number {
+  let balance = account.startingBalanceCents ?? 0;
+  for (const t of txns) {
+    if (t.accountId !== account.id) continue;
+    if (monthKeyOf(t.date) >= monthKey) continue; // only strictly-earlier months
+    balance += t.type === 'income' ? t.amountCents : -t.amountCents;
+  }
+  return balance;
+}
+
+/**
+ * Account balance at the end of `monthKey` — opening balance plus every
+ * transaction dated within the month and earlier. Equals balanceAtMonthStart
+ * plus the month's net movement. Counts notTracked transfers, as above.
+ */
+export function balanceAtMonthEnd(
+  account: Account,
+  txns: Transaction[],
+  monthKey: string,
+): number {
+  let balance = account.startingBalanceCents ?? 0;
+  for (const t of txns) {
+    if (t.accountId !== account.id) continue;
+    if (monthKeyOf(t.date) > monthKey) continue; // include this month and earlier
+    balance += t.type === 'income' ? t.amountCents : -t.amountCents;
+  }
+  return balance;
+}
+
+/**
+ * Maps each of the account's transaction ids to the running account balance
+ * immediately after that transaction, walking oldest → newest. Counts notTracked
+ * transfers (they move the balance). Because it's keyed by id and derived from
+ * the account's full history, callers can show a correct "balance after" figure
+ * even when the visible list is filtered by date or category.
+ */
+export function runningBalancesByTxn(
+  account: Account,
+  txns: Transaction[],
+): Record<string, number> {
+  const mine = txns
+    .filter((t) => t.accountId === account.id)
+    .slice()
+    .sort((a, b) => {
+      if (a.date !== b.date) return a.date < b.date ? -1 : 1;
+      if (a.createdAt !== b.createdAt) return a.createdAt - b.createdAt;
+      return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+    });
+  const out: Record<string, number> = {};
+  let balance = account.startingBalanceCents ?? 0;
+  for (const t of mine) {
+    balance += t.type === 'income' ? t.amountCents : -t.amountCents;
+    out[t.id] = balance;
+  }
+  return out;
+}
+
 /** Map of categoryId → expense cents for one account in one month. */
 export function spendingByCategory(
   txns: Transaction[],

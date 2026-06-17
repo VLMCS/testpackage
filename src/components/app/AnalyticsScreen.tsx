@@ -3,11 +3,24 @@ import { useSession } from '@/hooks/useSession';
 import { useData } from '@/hooks/useData';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { totalsForMonth, topSpendingCategories } from '@/lib/selectors';
+import {
+  totalsForMonth,
+  topSpendingCategories,
+  balanceAtMonthStart,
+  balanceAtMonthEnd,
+} from '@/lib/selectors';
 import { formatCents } from '@/lib/money';
-import { currentMonthKey, shiftMonthKey, monthLabel } from '@/lib/date';
+import { currentMonthKey, shiftMonthKey, monthLabel, isMonthComplete } from '@/lib/date';
 import { cn } from '@/lib/utils';
-import { ArrowDownRight, ArrowLeft, ArrowUpRight, ChevronLeft, ChevronRight, Minus } from 'lucide-react';
+import {
+  ArrowDownRight,
+  ArrowLeft,
+  ArrowRight,
+  ArrowUpRight,
+  ChevronLeft,
+  ChevronRight,
+  Minus,
+} from 'lucide-react';
 
 export function AnalyticsScreen({ onBack }: { onBack: () => void }) {
   const { activeAccount, baseCurrency } = useSession();
@@ -27,12 +40,22 @@ export function AnalyticsScreen({ onBack }: { onBack: () => void }) {
     () => topSpendingCategories(transactions, accId, month, myCats),
     [transactions, accId, month, myCats],
   );
+  const startBalance = useMemo(
+    () => (activeAccount ? balanceAtMonthStart(activeAccount, transactions, month) : 0),
+    [activeAccount, transactions, month],
+  );
+  const endBalance = useMemo(
+    () => (activeAccount ? balanceAtMonthEnd(activeAccount, transactions, month) : 0),
+    [activeAccount, transactions, month],
+  );
 
   if (!activeAccount) return null;
 
   const maxCat = topCats[0]?.cents ?? 0;
   const savingsRate = cur.incomeCents > 0 ? Math.round((cur.savedCents / cur.incomeCents) * 100) : null;
   const hasExcluded = myCats.some((c) => c.excludeFromTop);
+  const monthOver = isMonthComplete(month);
+  const netChange = endBalance - startBalance;
 
   return (
     <div className="space-y-5">
@@ -62,6 +85,60 @@ export function AnalyticsScreen({ onBack }: { onBack: () => void }) {
           <ChevronRight className="h-4 w-4" />
         </button>
       </div>
+
+      <Card>
+        <CardContent className="space-y-3 py-4">
+          <p className="text-sm font-medium">Balance over {monthLabel(month)}</p>
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground">First day</p>
+              <p className="truncate text-lg font-semibold tabular-nums">
+                {formatCents(startBalance, baseCurrency)}
+              </p>
+            </div>
+            <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <div className="min-w-0 text-right">
+              <p className="text-xs text-muted-foreground">Last day</p>
+              {monthOver ? (
+                <p className="truncate text-lg font-semibold tabular-nums">
+                  {formatCents(endBalance, baseCurrency)}
+                </p>
+              ) : (
+                <p className="text-lg font-semibold text-muted-foreground">—</p>
+              )}
+            </div>
+          </div>
+          {monthOver ? (
+            <div className="flex items-center justify-between border-t pt-2">
+              <span className="text-sm text-muted-foreground">Net change</span>
+              <span
+                className={cn(
+                  'flex items-center gap-0.5 text-sm font-medium tabular-nums',
+                  netChange === 0
+                    ? 'text-muted-foreground'
+                    : netChange > 0
+                      ? 'text-emerald-600'
+                      : 'text-rose-600',
+                )}
+              >
+                {netChange === 0 ? (
+                  <Minus className="h-3.5 w-3.5" />
+                ) : netChange > 0 ? (
+                  <ArrowUpRight className="h-3.5 w-3.5" />
+                ) : (
+                  <ArrowDownRight className="h-3.5 w-3.5" />
+                )}
+                {netChange > 0 ? '+' : netChange < 0 ? '−' : ''}
+                {formatCents(Math.abs(netChange), baseCurrency)}
+              </span>
+            </div>
+          ) : (
+            <p className="border-t pt-2 text-xs text-muted-foreground">
+              Your last-day balance appears here once {monthLabel(month)} is over.
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-3 gap-3">
         <Tile label="Income" value={formatCents(cur.incomeCents, baseCurrency)} />

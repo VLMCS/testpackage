@@ -1,4 +1,4 @@
-import { EyeOff } from 'lucide-react';
+import { EyeOff, Wallet } from 'lucide-react';
 import { friendlyDate } from '@/lib/date';
 import { formatCents } from '@/lib/money';
 import { getCategoryIcon } from '@/lib/icons';
@@ -12,6 +12,7 @@ export function TransactionList({
   currency,
   onSelect,
   ownerColors,
+  balanceAfter,
   emptyLabel = 'No transactions yet.',
 }: {
   transactions: Transaction[];
@@ -19,6 +20,9 @@ export function TransactionList({
   currency: string;
   onSelect?: (t: Transaction) => void;
   ownerColors?: Record<string, string>;
+  // Optional map of transaction id → account balance right after that transaction.
+  // When provided, each row shows the resulting balance beneath its amount.
+  balanceAfter?: Record<string, number>;
   emptyLabel?: string;
 }) {
   if (transactions.length === 0) {
@@ -83,14 +87,22 @@ export function TransactionList({
                       style={{ backgroundColor: ownerColors[t.accountId] }}
                     />
                   )}
-                  <span
-                    className={cn(
-                      'shrink-0 text-sm font-semibold tabular-nums',
-                      t.type === 'income' ? 'text-emerald-600' : 'text-foreground',
+                  <span className="flex shrink-0 flex-col items-end gap-0.5">
+                    <span
+                      className={cn(
+                        'text-sm font-semibold tabular-nums',
+                        t.type === 'income' ? 'text-emerald-600' : 'text-foreground',
+                      )}
+                    >
+                      {t.type === 'income' ? '+' : '−'}
+                      {formatCents(t.amountCents, currency)}
+                    </span>
+                    {balanceAfter && balanceAfter[t.id] !== undefined && (
+                      <span className="flex items-center gap-1 text-[11px] tabular-nums text-muted-foreground">
+                        <Wallet className="h-3 w-3" />
+                        {formatCents(balanceAfter[t.id], currency)}
+                      </span>
                     )}
-                  >
-                    {t.type === 'income' ? '+' : '−'}
-                    {formatCents(t.amountCents, currency)}
                   </span>
                 </button>
               );

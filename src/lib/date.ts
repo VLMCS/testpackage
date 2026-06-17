@@ -26,6 +26,14 @@ export function monthLabel(key: string): string {
   return format(parse(key, 'yyyy-MM', new Date()), 'MMMM yyyy');
 }
 
+/**
+ * True once `monthKey` is fully in the past — i.e. the month has ended, so its
+ * last-day balance is final. False for the current month and any future month.
+ */
+export function isMonthComplete(key: string): boolean {
+  return key < currentMonthKey();
+}
+
 /** Short, friendly label for an ISO date, e.g. 'Sat, May 31'. */
 export function friendlyDate(dateIso: string): string {
   return format(parse(dateIso, 'yyyy-MM-dd', new Date()), 'EEE, MMM d');
