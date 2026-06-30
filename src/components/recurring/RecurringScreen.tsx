@@ -8,7 +8,7 @@ import { RecurringEditorDialog } from './RecurringEditorDialog';
 import { addTransaction, deleteTransaction } from '@/lib/transactions';
 import { effectiveAmountCents } from '@/lib/recurring';
 import { formatCents } from '@/lib/money';
-import { currentMonthKey, shiftMonthKey, monthLabel } from '@/lib/date';
+import { currentMonthKey, shiftMonthKey, monthLabel, todayIso } from '@/lib/date';
 import { cn } from '@/lib/utils';
 import { ChevronLeft, ChevronRight, Pencil, Plus, Repeat } from 'lucide-react';
 import type { RecurringTemplate } from '@/types';
@@ -74,6 +74,11 @@ export function RecurringScreen() {
       setEditing(t);
       return;
     }
+    // Date the expense to the day it's actually marked complete. When ticking a
+    // bill for the current month that's today; for a past/future month "today"
+    // falls outside it, so fall back to the 1st so the expense still lands in
+    // the month it belongs to (recurringMonth keeps the link either way).
+    const completeDate = month === currentMonthKey() ? todayIso() : `${month}-01`;
     // Offline-first: don't await — the local cache flips the checkbox instantly
     // (via the snapshot) and syncs when back online.
     addTransaction(wsId, {
@@ -81,7 +86,7 @@ export function RecurringScreen() {
       categoryId: t.categoryId,
       type: 'expense',
       amountCents: effectiveAmountCents(t, month),
-      date: `${month}-01`,
+      date: completeDate,
       note: t.name,
       createdAt: Date.now(),
       createdBy: account.id,
