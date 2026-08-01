@@ -1,4 +1,4 @@
-import type { Account, Category, Transaction } from '@/types';
+import type { Account, Category, Transaction, Wallet } from '@/types';
 import { monthKeyOf } from './date';
 
 export interface MonthTotals {
@@ -104,6 +104,21 @@ export function runningBalancesByTxn(
     out[t.id] = balance;
   }
   return out;
+}
+
+/**
+ * Running balance of a single wallet: its opening balance plus every transaction
+ * assigned to it (income adds, expense subtracts). Like account balances, this
+ * counts notTracked transfers — the money really moved in or out of the wallet.
+ * Transactions with no walletId are ignored (they belong to no wallet).
+ */
+export function walletBalanceCents(wallet: Wallet, txns: Transaction[]): number {
+  let balance = wallet.startingBalanceCents ?? 0;
+  for (const t of txns) {
+    if (t.walletId !== wallet.id) continue;
+    balance += t.type === 'income' ? t.amountCents : -t.amountCents;
+  }
+  return balance;
 }
 
 /** Map of categoryId → expense cents for one account in one month. */

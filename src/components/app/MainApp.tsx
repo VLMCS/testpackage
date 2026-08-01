@@ -14,7 +14,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { gradientFromHex } from '@/lib/theme';
-import { migrateCategoriesPerAccount, dedupeCategories } from '@/lib/migrate';
+import { migrateCategoriesPerAccount, dedupeCategories, seedDefaultWallets } from '@/lib/migrate';
 import { Check, Loader2, WifiOff } from 'lucide-react';
 
 // Lazy-load the non-default screens so the initial bundle stays small.
@@ -36,10 +36,14 @@ const ProfileScreen = lazy(() =>
 const SettingsScreen = lazy(() =>
   import('./SettingsScreen').then((m) => ({ default: m.SettingsScreen })),
 );
+const WalletsScreen = lazy(() =>
+  import('./WalletsScreen').then((m) => ({ default: m.WalletsScreen })),
+);
 
 export function MainApp() {
   const { activeAccount, accounts, workspaceId } = useSession();
-  const { categories, transactions, recurringTemplates, loading, pendingWrites } = useData();
+  const { categories, transactions, recurringTemplates, wallets, loading, pendingWrites } =
+    useData();
   const online = useOnlineStatus();
   const [tab, setTab] = useState<Tab>('home');
   const [addOpen, setAddOpen] = useState(false);
@@ -94,6 +98,7 @@ export function MainApp() {
     migratedRef.current = true;
     void (async () => {
       // v2: per-account category copies. v3: merge exact duplicates.
+      // v4: seed default wallets for pre-existing accounts.
       await migrateCategoriesPerAccount(
         workspaceId,
         accounts,
@@ -102,14 +107,16 @@ export function MainApp() {
         recurringTemplates,
       );
       await dedupeCategories(workspaceId, categories, transactions, recurringTemplates);
+      await seedDefaultWallets(workspaceId, accounts, wallets);
     })().catch(() => {
       migratedRef.current = false; // allow a retry next render if it failed
     });
-  }, [loading, workspaceId, accounts, categories, transactions, recurringTemplates]);
+  }, [loading, workspaceId, accounts, categories, transactions, recurringTemplates, wallets]);
 
   if (!activeAccount || !workspaceId) return null;
 
   const myCategories = categories.filter((c) => c.accountId === activeAccount.id);
+  const myWallets = wallets.filter((w) => w.accountId === activeAccount.id && w.active);
 
   const fallback = (
     <div className="flex justify-center py-24">
@@ -153,14 +160,21 @@ export function MainApp() {
               <Dashboard
                 onViewAll={() => setTab('activity')}
                 onInsights={() => setTab('analytics')}
+                onOpenWallets={() => setTab('wallets')}
               />
             )}
             {tab === 'activity' && <TransactionsScreen />}
             {tab === 'recurring' && <RecurringScreen />}
             {tab === 'categories' && <CategoriesScreen />}
             {tab === 'analytics' && <AnalyticsScreen onBack={() => setTab('home')} />}
-            {tab === 'profile' && <ProfileScreen onOpenSettings={() => setTab('settings')} />}
+            {tab === 'profile' && (
+              <ProfileScreen
+                onOpenSettings={() => setTab('settings')}
+                onOpenWallets={() => setTab('wallets')}
+              />
+            )}
             {tab === 'settings' && <SettingsScreen onBack={() => setTab('profile')} />}
+            {tab === 'wallets' && <WalletsScreen onBack={() => setTab('profile')} />}
           </Suspense>
         )}
       </main>
@@ -173,6 +187,7 @@ export function MainApp() {
         workspaceId={workspaceId}
         accountId={activeAccount.id}
         categories={myCategories}
+        wallets={myWallets}
       />
 
       <Dialog open={exitOpen} onOpenChange={setExitOpen}>

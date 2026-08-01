@@ -15,9 +15,14 @@ import { useSession } from '@/hooks/useSession';
 import { addTransaction, updateTransaction, deleteTransaction } from '@/lib/transactions';
 import { parseAmountToCents } from '@/lib/money';
 import { todayIso } from '@/lib/date';
+import { STORAGE_KEYS } from '@/lib/constants';
+import { getCategoryIcon } from '@/lib/icons';
 import { cn } from '@/lib/utils';
-import type { AccountId, Category, Transaction } from '@/types';
+import type { AccountId, Category, Transaction, Wallet } from '@/types';
 import { Loader2, Trash2 } from 'lucide-react';
+
+// Per-account key so each profile remembers its own last-used wallet.
+const lastWalletKey = (accountId: AccountId) => `${STORAGE_KEYS.lastWallet}.${accountId}`;
 
 export function AddTransactionDialog({
   open,
@@ -25,6 +30,7 @@ export function AddTransactionDialog({
   workspaceId,
   accountId,
   categories,
+  wallets,
   editing,
 }: {
   open: boolean;
@@ -32,11 +38,13 @@ export function AddTransactionDialog({
   workspaceId: string;
   accountId: AccountId;
   categories: Category[];
+  wallets: Wallet[];
   editing?: Transaction | null;
 }) {
   const { baseCurrency } = useSession();
   const [type, setType] = useState<'expense' | 'income'>('expense');
   const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [walletId, setWalletId] = useState<string | null>(null);
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState(todayIso());
   const [note, setNote] = useState('');
@@ -49,6 +57,8 @@ export function AddTransactionDialog({
     if (editing) {
       setType(editing.type);
       setCategoryId(editing.categoryId);
+      // Keep whatever wallet the transaction had (or none for older ones).
+      setWalletId(editing.walletId ?? null);
       setAmount((editing.amountCents / 100).toString());
       setDate(editing.date);
       setNote(editing.note);
@@ -56,6 +66,14 @@ export function AddTransactionDialog({
     } else {
       setType('expense');
       setCategoryId(null);
+      // Pre-select the last-used wallet for this account if it still exists,
+      // otherwise the first wallet. Empty when the account has no wallets.
+      const remembered = localStorage.getItem(lastWalletKey(accountId));
+      const preselect =
+        (remembered && wallets.some((w) => w.id === remembered) && remembered) ||
+        wallets[0]?.id ||
+        null;
+      setWalletId(preselect);
       setAmount('');
       setDate(todayIso());
       setNote('');
@@ -63,7 +81,7 @@ export function AddTransactionDialog({
     }
     setErr(null);
     setBusy(false);
-  }, [open, editing]);
+  }, [open, editing, accountId, wallets]);
 
   const options = categories.filter((c) => c.type === type);
 
@@ -86,8 +104,16 @@ export function AddTransactionDialog({
       setErr('Pick a category.');
       return;
     }
+    // Require a wallet only when the account actually has wallets to choose from.
+    // Older/edited transactions with none stay valid (unassigned) for compat.
+    if (wallets.length > 0 && !walletId) {
+      setErr('Pick a wallet.');
+      return;
+    }
     setErr(null);
     setBusy(true);
+    // Remember this wallet as the default for this account's next transaction.
+    if (walletId) localStorage.setItem(lastWalletKey(accountId), walletId);
     // Offline-first: don't await the write — Firestore applies it to the local
     // cache immediately and syncs when back online (the promise stays pending
     // offline). Close right away; errors (rare) just log + retry on reconnect.
@@ -95,6 +121,7 @@ export function AddTransactionDialog({
       ? updateTransaction(workspaceId, editing.id, {
           type,
           categoryId,
+          walletId: walletId ?? null,
           amountCents: cents,
           date,
           note: note.trim(),
@@ -103,6 +130,7 @@ export function AddTransactionDialog({
       : addTransaction(workspaceId, {
           accountId,
           categoryId,
+          walletId: walletId ?? null,
           type,
           amountCents: cents,
           date,
@@ -161,6 +189,25 @@ export function AddTransactionDialog({
             className="text-lg"
           />
         </div>
+
+        {wallets.length > 0 && (
+          <div className="space-y-2">
+            <Label>{type === 'expense' ? 'From wallet' : 'To wallet'}</Label>
+            <div className="flex flex-wrap gap-2">
+              {wallets.map((w) => (
+                <WalletChip
+                  key={w.id}
+                  wallet={w}
+                  selected={walletId === w.id}
+                  onClick={() => {
+                    setErr(null);
+                    setWalletId(w.id);
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="space-y-2">
           <Label>Category</Label>
@@ -240,5 +287,31 @@ export function AddTransactionDialog({
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function WalletChip({
+  wallet,
+  selected,
+  onClick,
+}: {
+  wallet: Wallet;
+  selected: boolean;
+  onClick: () => void;
+}) {
+  const Icon = getCategoryIcon(wallet.icon);
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors',
+        selected ? 'border-transparent text-white' : 'bg-background text-foreground',
+      )}
+      style={selected ? { backgroundColor: wallet.color } : undefined}
+    >
+      <Icon className="h-4 w-4" style={selected ? undefined : { color: wallet.color }} />
+      {wallet.name}
+    </button>
   );
 }

@@ -46,6 +46,23 @@ export type Category = {
   excludeFromTop?: boolean;
 };
 
+// A money source that lives inside a person-Account (Cash, Bank, Credit Card,
+// GCash, …). It answers "where did this money actually come from / go to". A
+// wallet's balance is derived: startingBalanceCents + the transactions assigned
+// to it (see walletBalanceCents in src/lib/selectors.ts). Wallets are additive —
+// older transactions have no walletId and are treated as "unassigned".
+export type Wallet = {
+  id: string;
+  accountId: AccountId; // owner — wallets are per-account, like categories
+  name: string;
+  color: string;
+  icon: string; // lucide-react icon name
+  startingBalanceCents: number; // opening balance for this wallet (may be 0)
+  sortOrder: number;
+  active: boolean;
+  createdAt: number;
+};
+
 export type Transaction = {
   id: string;
   accountId: AccountId;
@@ -56,6 +73,11 @@ export type Transaction = {
   note: string;
   createdAt: number;
   createdBy: AccountId;
+  // The wallet this transaction draws from (expense) or lands in (income).
+  // Optional/absent on transactions created before Wallets existed — such
+  // transactions are "unassigned" and simply don't count toward any wallet
+  // balance. The account-level balance is unaffected either way.
+  walletId?: string | null;
   // Set when this expense was materialized by ticking a recurring bill. Lets the
   // Recurring tab know which template/month a transaction belongs to (and undo it).
   recurringTemplateId?: string | null;

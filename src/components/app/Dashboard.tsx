@@ -2,8 +2,14 @@ import { useMemo } from 'react';
 import { useSession } from '@/hooks/useSession';
 import { useData } from '@/hooks/useData';
 import { currentMonthKey, monthLabel } from '@/lib/date';
-import { totalsForMonth, currentBalanceCents, topSpendingCategories } from '@/lib/selectors';
+import {
+  totalsForMonth,
+  currentBalanceCents,
+  topSpendingCategories,
+  walletBalanceCents,
+} from '@/lib/selectors';
 import { formatCents } from '@/lib/money';
+import { getCategoryIcon } from '@/lib/icons';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { TransactionList } from '@/components/transactions/TransactionList';
@@ -13,14 +19,21 @@ import { cn } from '@/lib/utils';
 export function Dashboard({
   onViewAll,
   onInsights,
+  onOpenWallets,
 }: {
   onViewAll: () => void;
   onInsights: () => void;
+  onOpenWallets: () => void;
 }) {
   const { activeAccount, baseCurrency } = useSession();
-  const { transactions, categories } = useData();
+  const { transactions, categories, wallets } = useData();
   const month = currentMonthKey();
   const accId = activeAccount?.id ?? '';
+
+  const myWallets = useMemo(
+    () => wallets.filter((w) => w.accountId === accId && w.active),
+    [wallets, accId],
+  );
 
   const totals = useMemo(
     () => totalsForMonth(transactions, accId, month),
@@ -50,6 +63,43 @@ export function Dashboard({
           <p className="text-3xl font-bold tracking-tight">{formatCents(balance, baseCurrency)}</p>
         </CardContent>
       </Card>
+
+      {myWallets.length > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between px-1">
+            <p className="text-sm font-medium text-muted-foreground">Wallets</p>
+            <Button variant="ghost" size="sm" onClick={onOpenWallets}>
+              Manage <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+          <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
+            {myWallets.map((w) => {
+              const Icon = getCategoryIcon(w.icon);
+              return (
+                <button
+                  key={w.id}
+                  type="button"
+                  onClick={onOpenWallets}
+                  className="flex shrink-0 items-center gap-2 rounded-xl border bg-card p-3 text-left shadow-sm transition-colors hover:bg-accent"
+                >
+                  <span
+                    className="flex h-8 w-8 items-center justify-center rounded-lg text-white"
+                    style={{ backgroundColor: w.color }}
+                  >
+                    <Icon className="h-4 w-4" />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-xs text-muted-foreground">{w.name}</span>
+                    <span className="block text-sm font-semibold tabular-nums">
+                      {formatCents(walletBalanceCents(w, transactions), baseCurrency)}
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div>
         <div className="mb-2 flex items-center justify-between px-1">

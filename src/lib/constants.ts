@@ -4,6 +4,9 @@ export const STORAGE_KEYS = {
   workspaceId: 'budget.workspaceId',
   lastAccount: 'budget.lastAccount',
   theme: 'budget.theme',
+  // Remembers the wallet used on the last transaction so the Add dialog can
+  // pre-select it next time (keyed per account below).
+  lastWallet: 'budget.lastWallet',
   // sessionStorage (NOT localStorage): keeps the unlocked profile across a
   // refresh, but clears on full app/tab close so a cold launch re-asks the PIN.
   activeSession: 'budget.activeSession',
@@ -66,3 +69,18 @@ export const DEFAULT_CATEGORIES: CategorySeed[] = [
 ];
 // Note: recurring is a behavior (a repeating bill filed under a real expense
 // category), NOT its own category — so nothing of type 'recurring' is seeded.
+
+export type WalletSeed = {
+  name: string;
+  icon: string; // lucide-react component name
+  color: string;
+  sortOrder: number;
+};
+
+// Seeded per account so the wallet picker is usable immediately. Users can
+// rename, recolor, add, or delete these freely. Opening balances start at 0 —
+// the user sets them in the Wallets screen.
+export const DEFAULT_WALLETS: WalletSeed[] = [
+  { name: 'Cash', icon: 'Wallet', color: '#16a34a', sortOrder: 0 },
+  { name: 'Bank', icon: 'Landmark', color: '#2563eb', sortOrder: 1 },
+];

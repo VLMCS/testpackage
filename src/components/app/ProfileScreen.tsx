@@ -8,11 +8,17 @@ import { Button } from '@/components/ui/button';
 import { currentBalanceCents } from '@/lib/selectors';
 import { formatCents } from '@/lib/money';
 import { gradientFromHex } from '@/lib/theme';
-import { ChevronRight, Cog, Pencil, RefreshCw, Settings } from 'lucide-react';
+import { ChevronRight, Cog, Pencil, RefreshCw, Settings, Wallet } from 'lucide-react';
 
-export function ProfileScreen({ onOpenSettings }: { onOpenSettings: () => void }) {
+export function ProfileScreen({
+  onOpenSettings,
+  onOpenWallets,
+}: {
+  onOpenSettings: () => void;
+  onOpenWallets: () => void;
+}) {
   const { activeAccount, baseCurrency, workspaceId, lock } = useSession();
-  const { transactions } = useData();
+  const { transactions, wallets } = useData();
   const [editing, setEditing] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
 
@@ -56,6 +62,21 @@ export function ProfileScreen({ onOpenSettings }: { onOpenSettings: () => void }
           </Button>
         </CardContent>
       </Card>
+
+      <button
+        type="button"
+        onClick={onOpenWallets}
+        className="flex w-full items-center justify-between rounded-xl border bg-card p-4 text-left shadow-sm transition-colors hover:bg-accent"
+      >
+        <span className="flex items-center gap-3">
+          <Wallet className="h-5 w-5 text-muted-foreground" />
+          <span className="font-medium">Wallets</span>
+        </span>
+        <span className="flex items-center gap-2 text-sm text-muted-foreground">
+          {wallets.filter((w) => w.accountId === activeAccount.id).length}
+          <ChevronRight className="h-5 w-5" />
+        </span>
+      </button>
 
       <button
         type="button"
