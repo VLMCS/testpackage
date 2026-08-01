@@ -2,9 +2,12 @@ import {
   collection,
   addDoc,
   updateDoc,
-  deleteDoc,
   doc,
   onSnapshot,
+  getDocs,
+  query,
+  where,
+  writeBatch,
 } from 'firebase/firestore';
 import { getFirebase } from './firebase';
 import type { Wallet } from '@/types';
@@ -30,9 +33,38 @@ export async function updateWallet(
   await updateDoc(doc(db, 'workspaces', workspaceId, 'wallets', id), patch);
 }
 
+/**
+ * Delete a wallet without losing money. Any transactions assigned to it fall
+ * back to Unassigned (walletId cleared), and any transfers touching it are
+ * rewritten to point at Unassigned (null) so their counterpart wallet is
+ * unaffected. Then the wallet doc itself is removed. Writes are chunked to stay
+ * under Firestore's 500-per-batch limit.
+ */
 export async function deleteWallet(workspaceId: string, id: string): Promise<void> {
   const { db } = getFirebase();
-  await deleteDoc(doc(db, 'workspaces', workspaceId, 'wallets', id));
+  const base = ['workspaces', workspaceId] as const;
+
+  const txnSnap = await getDocs(
+    query(collection(db, ...base, 'transactions'), where('walletId', '==', id)),
+  );
+  const fromSnap = await getDocs(
+    query(collection(db, ...base, 'transfers'), where('fromWalletId', '==', id)),
+  );
+  const toSnap = await getDocs(
+    query(collection(db, ...base, 'transfers'), where('toWalletId', '==', id)),
+  );
+
+  const writers: Array<(b: ReturnType<typeof writeBatch>) => void> = [];
+  for (const d of txnSnap.docs) writers.push((b) => b.update(d.ref, { walletId: null }));
+  for (const d of fromSnap.docs) writers.push((b) => b.update(d.ref, { fromWalletId: null }));
+  for (const d of toSnap.docs) writers.push((b) => b.update(d.ref, { toWalletId: null }));
+  writers.push((b) => b.delete(doc(db, ...base, 'wallets', id)));
+
+  for (let i = 0; i < writers.length; i += 450) {
+    const batch = writeBatch(db);
+    for (const w of writers.slice(i, i + 450)) w(batch);
+    await batch.commit();
+  }
 }
 
 export function subscribeWallets(

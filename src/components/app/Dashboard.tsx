@@ -26,7 +26,7 @@ export function Dashboard({
   onOpenWallets: () => void;
 }) {
   const { activeAccount, baseCurrency } = useSession();
-  const { transactions, categories, wallets } = useData();
+  const { transactions, categories, wallets, transfers } = useData();
   const month = currentMonthKey();
   const accId = activeAccount?.id ?? '';
 
@@ -91,7 +91,7 @@ export function Dashboard({
                   <span className="min-w-0">
                     <span className="block text-xs text-muted-foreground">{w.name}</span>
                     <span className="block text-sm font-semibold tabular-nums">
-                      {formatCents(walletBalanceCents(w, transactions), baseCurrency)}
+                      {formatCents(walletBalanceCents(w, transactions, transfers), baseCurrency)}
                     </span>
                   </span>
                 </button>

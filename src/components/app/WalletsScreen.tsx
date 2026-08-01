@@ -2,34 +2,47 @@ import { useMemo, useState } from 'react';
 import { useSession } from '@/hooks/useSession';
 import { useData } from '@/hooks/useData';
 import { WalletEditorDialog } from '@/components/wallets/WalletEditorDialog';
+import { TransferDialog } from '@/components/wallets/TransferDialog';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { walletBalanceCents } from '@/lib/selectors';
+import { walletBalanceCents, unassignedBalanceCents } from '@/lib/selectors';
 import { formatCents } from '@/lib/money';
 import { getCategoryIcon } from '@/lib/icons';
 import { gradientFromHex } from '@/lib/theme';
-import { ChevronLeft, Plus } from 'lucide-react';
-import type { Wallet } from '@/types';
+import { friendlyDate } from '@/lib/date';
+import { ArrowRight, ChevronLeft, Plus, ArrowLeftRight } from 'lucide-react';
+import type { Transfer, Wallet } from '@/types';
 
 export function WalletsScreen({ onBack }: { onBack: () => void }) {
   const { activeAccount, baseCurrency, workspaceId } = useSession();
-  const { wallets, transactions } = useData();
+  const { wallets, transactions, transfers } = useData();
   const [editing, setEditing] = useState<Wallet | null>(null);
   const [adding, setAdding] = useState(false);
+  const [transferOpen, setTransferOpen] = useState(false);
+  const [editingTransfer, setEditingTransfer] = useState<Transfer | null>(null);
 
   const accId = activeAccount?.id ?? '';
-  const mine = useMemo(
-    () => wallets.filter((w) => w.accountId === accId),
-    [wallets, accId],
+  const mine = useMemo(() => wallets.filter((w) => w.accountId === accId), [wallets, accId]);
+  const myTransfers = useMemo(
+    () => transfers.filter((t) => t.accountId === accId),
+    [transfers, accId],
+  );
+  const unassigned = useMemo(
+    () => (activeAccount ? unassignedBalanceCents(activeAccount, transactions, transfers) : 0),
+    [activeAccount, transactions, transfers],
   );
   const total = useMemo(
-    () => mine.reduce((sum, w) => sum + walletBalanceCents(w, transactions), 0),
-    [mine, transactions],
+    () =>
+      unassigned +
+      mine.reduce((sum, w) => sum + walletBalanceCents(w, transactions, transfers), 0),
+    [unassigned, mine, transactions, transfers],
   );
 
   if (!activeAccount || !workspaceId) return null;
 
-  const open = editing !== null || adding;
+  const walletEditorOpen = editing !== null || adding;
+  const nameFor = (id: string | null) =>
+    id === null ? 'Unassigned' : (mine.find((w) => w.id === id)?.name ?? 'Deleted wallet');
 
   return (
     <div className="space-y-5">
@@ -47,10 +60,28 @@ export function WalletsScreen({ onBack }: { onBack: () => void }) {
         </CardContent>
       </Card>
 
+      <Button variant="outline" className="w-full" onClick={() => setTransferOpen(true)}>
+        <ArrowLeftRight className="h-4 w-4" /> Move money
+      </Button>
+
       <div className="space-y-2">
+        {/* Unassigned bucket — the account's money not yet in a named wallet. */}
+        <div className="flex w-full items-center gap-3 rounded-xl border border-dashed bg-card p-3">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+            <ArrowLeftRight className="h-5 w-5" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block font-medium">Unassigned</span>
+            <span className="block text-xs text-muted-foreground">Not in a wallet yet</span>
+          </span>
+          <span className="shrink-0 font-semibold tabular-nums">
+            {formatCents(unassigned, baseCurrency)}
+          </span>
+        </div>
+
         {mine.map((w) => {
           const Icon = getCategoryIcon(w.icon);
-          const bal = walletBalanceCents(w, transactions);
+          const bal = walletBalanceCents(w, transactions, transfers);
           return (
             <button
               key={w.id}
@@ -82,13 +113,45 @@ export function WalletsScreen({ onBack }: { onBack: () => void }) {
         </button>
       </div>
 
+      {myTransfers.length > 0 && (
+        <div className="space-y-2">
+          <p className="px-1 text-sm font-medium text-muted-foreground">Recent transfers</p>
+          <div className="space-y-2">
+            {myTransfers.slice(0, 15).map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => {
+                  setEditingTransfer(t);
+                  setTransferOpen(true);
+                }}
+                className="flex w-full items-center gap-2 rounded-xl border bg-card p-3 text-left text-sm shadow-sm transition-colors hover:bg-accent"
+              >
+                <span className="flex min-w-0 flex-1 items-center gap-1.5">
+                  <span className="truncate font-medium">{nameFor(t.fromWalletId)}</span>
+                  <ArrowRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                  <span className="truncate font-medium">{nameFor(t.toWalletId)}</span>
+                </span>
+                <span className="shrink-0 text-right">
+                  <span className="block font-semibold tabular-nums">
+                    {formatCents(t.amountCents, baseCurrency)}
+                  </span>
+                  <span className="block text-xs text-muted-foreground">{friendlyDate(t.date)}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <p className="px-1 text-xs text-muted-foreground">
-        Each wallet's balance is its starting amount plus the transactions assigned to it. When you
-        add a transaction, pick which wallet it comes from.
+        Each wallet's balance is its starting amount, the transactions assigned to it, and any
+        transfers in or out. Use "Move money" to shift funds — for example, out of Unassigned into a
+        wallet.
       </p>
 
       <WalletEditorDialog
-        open={open}
+        open={walletEditorOpen}
         onOpenChange={(o) => {
           if (!o) {
             setEditing(null);
@@ -98,6 +161,18 @@ export function WalletsScreen({ onBack }: { onBack: () => void }) {
         workspaceId={workspaceId}
         accountId={accId}
         editing={editing}
+      />
+
+      <TransferDialog
+        open={transferOpen}
+        onOpenChange={(o) => {
+          setTransferOpen(o);
+          if (!o) setEditingTransfer(null);
+        }}
+        workspaceId={workspaceId}
+        accountId={accId}
+        wallets={mine.filter((w) => w.active)}
+        editing={editingTransfer}
       />
     </div>
   );

@@ -14,6 +14,7 @@ import { IconPicker } from '@/components/categories/IconPicker';
 import { getCategoryIcon } from '@/lib/icons';
 import { gradientFromHex, isLightColor } from '@/lib/theme';
 import { parseAmountToCents } from '@/lib/money';
+import { WALLET_PRESETS } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import { addWallet, updateWallet, deleteWallet } from '@/lib/wallets';
 import { useSession } from '@/hooks/useSession';
@@ -117,6 +118,36 @@ export function WalletEditorDialog({
             A wallet is a money source — Cash, Bank, Credit Card. Expenses draw from it.
           </DialogDescription>
         </DialogHeader>
+
+        {!editing && (
+          <div className="space-y-2">
+            <Label>Quick add</Label>
+            <div className="flex flex-wrap gap-2">
+              {WALLET_PRESETS.map((p) => {
+                const PIcon = getCategoryIcon(p.icon);
+                return (
+                  <button
+                    key={p.name}
+                    type="button"
+                    onClick={() => {
+                      setErr(null);
+                      setName(p.name);
+                      setColor(p.color);
+                      setIcon(p.icon);
+                    }}
+                    className="flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors hover:bg-accent"
+                  >
+                    <PIcon className="h-4 w-4" style={{ color: p.color }} />
+                    {p.name}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Tap one to pre-fill, then adjust below. You can still change everything.
+            </p>
+          </div>
+        )}
 
         <div className="flex items-center gap-3">
           <span

@@ -63,6 +63,23 @@ export type Wallet = {
   createdAt: number;
 };
 
+// Moves money between two of an account's wallets without being spending or
+// income. A null endpoint means the "Unassigned" bucket — the account's money
+// that isn't in a named wallet yet (opening balance + transactions with no
+// walletId). Transfers live in their own subcollection so they never count as
+// transactions, never touch the account's total balance, and only shift where
+// money sits between wallets (see selectors.ts).
+export type Transfer = {
+  id: string;
+  accountId: AccountId;
+  fromWalletId: string | null; // null = Unassigned bucket
+  toWalletId: string | null; // null = Unassigned bucket
+  amountCents: number;
+  date: string; // 'yyyy-MM-dd'
+  note: string;
+  createdAt: number;
+};
+
 export type Transaction = {
   id: string;
   accountId: AccountId;

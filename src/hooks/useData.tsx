@@ -3,13 +3,15 @@ import { subscribeCategories } from '@/lib/categories';
 import { subscribeTransactions } from '@/lib/transactions';
 import { subscribeTemplates } from '@/lib/recurring';
 import { subscribeWallets } from '@/lib/wallets';
-import type { Category, RecurringTemplate, Transaction, Wallet } from '@/types';
+import { subscribeTransfers } from '@/lib/transfers';
+import type { Category, RecurringTemplate, Transaction, Transfer, Wallet } from '@/types';
 
 interface DataContextValue {
   categories: Category[];
   transactions: Transaction[];
   recurringTemplates: RecurringTemplate[];
   wallets: Wallet[];
+  transfers: Transfer[];
   loading: boolean;
   /** True while local changes are still being synced to the server. */
   pendingWrites: boolean;
@@ -34,14 +36,17 @@ export function DataProvider({
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [recurringTemplates, setRecurringTemplates] = useState<RecurringTemplate[]>([]);
   const [wallets, setWallets] = useState<Wallet[]>([]);
+  const [transfers, setTransfers] = useState<Transfer[]>([]);
   const [catLoaded, setCatLoaded] = useState(false);
   const [txLoaded, setTxLoaded] = useState(false);
   const [recLoaded, setRecLoaded] = useState(false);
   const [walLoaded, setWalLoaded] = useState(false);
+  const [trfLoaded, setTrfLoaded] = useState(false);
   const [pendingCat, setPendingCat] = useState(false);
   const [pendingTx, setPendingTx] = useState(false);
   const [pendingRec, setPendingRec] = useState(false);
   const [pendingWal, setPendingWal] = useState(false);
+  const [pendingTrf, setPendingTrf] = useState(false);
 
   useEffect(() => {
     const unsubCats = subscribeCategories(workspaceId, (c, pending) => {
@@ -64,11 +69,17 @@ export function DataProvider({
       setWalLoaded(true);
       setPendingWal(pending);
     });
+    const unsubTrf = subscribeTransfers(workspaceId, (t, pending) => {
+      setTransfers(t);
+      setTrfLoaded(true);
+      setPendingTrf(pending);
+    });
     return () => {
       unsubCats();
       unsubTx();
       unsubRec();
       unsubWal();
+      unsubTrf();
     };
   }, [workspaceId]);
 
@@ -79,8 +90,9 @@ export function DataProvider({
         transactions,
         recurringTemplates,
         wallets,
-        loading: !(catLoaded && txLoaded && recLoaded && walLoaded),
-        pendingWrites: pendingCat || pendingTx || pendingRec || pendingWal,
+        transfers,
+        loading: !(catLoaded && txLoaded && recLoaded && walLoaded && trfLoaded),
+        pendingWrites: pendingCat || pendingTx || pendingRec || pendingWal || pendingTrf,
       }}
     >
       {children}

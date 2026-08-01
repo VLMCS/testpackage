@@ -84,3 +84,25 @@ export const DEFAULT_WALLETS: WalletSeed[] = [
   { name: 'Cash', icon: 'Wallet', color: '#16a34a', sortOrder: 0 },
   { name: 'Bank', icon: 'Landmark', color: '#2563eb', sortOrder: 1 },
 ];
+
+export type WalletPreset = { name: string; icon: string; color: string };
+
+// Quick-add presets for common Philippine banks and e-wallets. Picking one just
+// pre-fills the New Wallet form (name/color/icon) — the user can still edit
+// everything before saving. Colors approximate each brand; icons come from the
+// shared icon registry (see src/lib/icons.ts). Purely cosmetic starting points.
+export const WALLET_PRESETS: WalletPreset[] = [
+  { name: 'Cash', icon: 'Wallet', color: '#16a34a' },
+  { name: 'GCash', icon: 'Smartphone', color: '#0a7ff0' },
+  { name: 'Maya', icon: 'Smartphone', color: '#16b25a' },
+  { name: 'BDO', icon: 'Landmark', color: '#1a3f8b' },
+  { name: 'BPI', icon: 'Landmark', color: '#b01116' },
+  { name: 'GoTyme', icon: 'Landmark', color: '#00b6cf' },
+  { name: 'Maribank', icon: 'Landmark', color: '#f45c1f' },
+  { name: 'Netbank', icon: 'Landmark', color: '#0f766e' },
+  { name: 'SeaBank', icon: 'Landmark', color: '#f6511d' },
+  { name: 'UnionBank', icon: 'Landmark', color: '#f79008' },
+  { name: 'Metrobank', icon: 'Landmark', color: '#0a2a66' },
+  { name: 'CIMB', icon: 'Landmark', color: '#7a141d' },
+  { name: 'Credit Card', icon: 'CreditCard', color: '#6d28d9' },
+];

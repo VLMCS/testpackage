@@ -1,4 +1,4 @@
-import type { Account, Category, Transaction, Wallet } from '@/types';
+import type { Account, Category, Transaction, Transfer, Wallet } from '@/types';
 import { monthKeyOf } from './date';
 
 export interface MonthTotals {
@@ -107,16 +107,52 @@ export function runningBalancesByTxn(
 }
 
 /**
- * Running balance of a single wallet: its opening balance plus every transaction
- * assigned to it (income adds, expense subtracts). Like account balances, this
- * counts notTracked transfers — the money really moved in or out of the wallet.
- * Transactions with no walletId are ignored (they belong to no wallet).
+ * Running balance of a single wallet: its opening balance, plus every
+ * transaction assigned to it (income adds, expense subtracts), plus the net of
+ * transfers into/out of it. `notTracked` transactions still count here — the
+ * money really moved in or out of the wallet. Transactions with no walletId are
+ * ignored (they live in the Unassigned bucket instead).
  */
-export function walletBalanceCents(wallet: Wallet, txns: Transaction[]): number {
+export function walletBalanceCents(
+  wallet: Wallet,
+  txns: Transaction[],
+  transfers: Transfer[] = [],
+): number {
   let balance = wallet.startingBalanceCents ?? 0;
   for (const t of txns) {
     if (t.walletId !== wallet.id) continue;
     balance += t.type === 'income' ? t.amountCents : -t.amountCents;
+  }
+  for (const tr of transfers) {
+    if (tr.toWalletId === wallet.id) balance += tr.amountCents;
+    if (tr.fromWalletId === wallet.id) balance -= tr.amountCents;
+  }
+  return balance;
+}
+
+/**
+ * The "Unassigned" bucket for one account: money that isn't in a named wallet.
+ * It's the account's opening balance, plus every transaction with no walletId,
+ * plus the net of transfers whose endpoint is Unassigned (null). This is what a
+ * pre-Wallets household starts with, and what wallet-to-wallet transfers draw
+ * from until it's been allocated out. Counts notTracked transactions (the money
+ * really moved).
+ */
+export function unassignedBalanceCents(
+  account: Account,
+  txns: Transaction[],
+  transfers: Transfer[] = [],
+): number {
+  let balance = account.startingBalanceCents ?? 0;
+  for (const t of txns) {
+    if (t.accountId !== account.id) continue;
+    if (t.walletId) continue; // belongs to a named wallet
+    balance += t.type === 'income' ? t.amountCents : -t.amountCents;
+  }
+  for (const tr of transfers) {
+    if (tr.accountId !== account.id) continue;
+    if (tr.toWalletId === null) balance += tr.amountCents;
+    if (tr.fromWalletId === null) balance -= tr.amountCents;
   }
   return balance;
 }
