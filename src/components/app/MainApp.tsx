@@ -39,6 +39,9 @@ const SettingsScreen = lazy(() =>
 const WalletsScreen = lazy(() =>
   import('./WalletsScreen').then((m) => ({ default: m.WalletsScreen })),
 );
+const PlansScreen = lazy(() =>
+  import('./PlansScreen').then((m) => ({ default: m.PlansScreen })),
+);
 
 export function MainApp() {
   const { activeAccount, accounts, workspaceId } = useSession();
@@ -171,10 +174,12 @@ export function MainApp() {
               <ProfileScreen
                 onOpenSettings={() => setTab('settings')}
                 onOpenWallets={() => setTab('wallets')}
+                onOpenPlans={() => setTab('plans')}
               />
             )}
             {tab === 'settings' && <SettingsScreen onBack={() => setTab('profile')} />}
             {tab === 'wallets' && <WalletsScreen onBack={() => setTab('profile')} />}
+            {tab === 'plans' && <PlansScreen onBack={() => setTab('profile')} />}
           </Suspense>
         )}
       </main>

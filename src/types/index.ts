@@ -106,6 +106,25 @@ export type Transaction = {
   notTracked?: boolean;
 };
 
+// A savings goal ("Finance Plan") — Emergency Fund, House, Vacation, … owned by
+// one account. Progress can either mirror a linked wallet's balance (walletId
+// set) or be tracked manually (savedCents). Fully additive: its own subcollection.
+export type FinancePlan = {
+  id: string;
+  accountId: AccountId;
+  name: string;
+  icon: string; // lucide-react icon name
+  color: string;
+  targetCents: number; // the goal amount
+  // When set, the plan's saved amount is that wallet's live balance. When unset,
+  // savedCents below is used (a manually maintained figure).
+  walletId?: string | null;
+  savedCents?: number; // manual progress; ignored when walletId is set
+  deadline?: string | null; // optional target date 'yyyy-MM-dd'
+  active: boolean;
+  createdAt: number;
+};
+
 // A recurring bill definition (rent, Netflix, …) owned by one account. Each month
 // it appears in the Recurring checklist unchecked; ticking it creates an expense
 // transaction for that month (categorized under the special Recurring category).

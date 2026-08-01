@@ -85,6 +85,20 @@ export const DEFAULT_WALLETS: WalletSeed[] = [
   { name: 'Bank', icon: 'Landmark', color: '#2563eb', sortOrder: 1 },
 ];
 
+export type PlanPreset = { name: string; icon: string; color: string };
+
+// Quick-start presets for common savings goals (see roadmap 03_Finance_Planning).
+// Picking one pre-fills the New Plan form; everything stays editable.
+export const PLAN_PRESETS: PlanPreset[] = [
+  { name: 'Emergency Fund', icon: 'PiggyBank', color: '#16a34a' },
+  { name: 'House', icon: 'Home', color: '#7c3aed' },
+  { name: 'New Car', icon: 'Car', color: '#0284c7' },
+  { name: 'Vacation', icon: 'Plane', color: '#0d9488' },
+  { name: 'Wedding', icon: 'Gift', color: '#e11d48' },
+  { name: 'Retirement', icon: 'TrendingUp', color: '#d97706' },
+  { name: 'Education', icon: 'GraduationCap', color: '#2563eb' },
+];
+
 export type WalletPreset = { name: string; icon: string; color: string };
 
 // Quick-add presets for common Philippine banks and e-wallets. Picking one just
