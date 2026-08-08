@@ -11,6 +11,7 @@ import {
   budgetSpentCents,
   budgetProgress,
   budgetAppliesToMonth,
+  budgetLevel,
 } from '@/lib/selectors';
 import { formatCents } from '@/lib/money';
 import { getCategoryIcon } from '@/lib/icons';
@@ -184,11 +185,11 @@ export function Dashboard({
               {myBudgets.map((b) => {
                 const spent = budgetSpentCents(transactions, b.id, month);
                 const p = budgetProgress(b.amountCents, spent);
-                const health = p.over
-                  ? { bar: '#dc2626', text: 'text-rose-600 dark:text-rose-400' }
-                  : p.low
-                    ? { bar: '#d97706', text: 'text-amber-600 dark:text-amber-400' }
-                    : { bar: '#16a34a', text: 'text-emerald-600 dark:text-emerald-400' };
+                const health = {
+                  full: { bar: '#16a34a', text: 'text-emerald-600 dark:text-emerald-400' },
+                  mid: { bar: '#d97706', text: 'text-amber-600 dark:text-amber-400' },
+                  low: { bar: '#dc2626', text: 'text-rose-600 dark:text-rose-400' },
+                }[budgetLevel(p)];
                 return (
                   <div key={b.id}>
                     <div className="mb-1 flex items-center justify-between text-xs">

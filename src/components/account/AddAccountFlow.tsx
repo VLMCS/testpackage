@@ -86,6 +86,7 @@ export function AddAccountFlow({ onBack }: { onBack: () => void }) {
           startingBalanceCents: cents,
           pinHash: hash,
           pinSalt: salt,
+          pinLength: pin.length,
         },
         catChoice,
       );

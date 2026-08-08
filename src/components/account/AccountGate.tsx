@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useSession } from '@/hooks/useSession';
 import type { Account, AccountId } from '@/types';
 import { PinPad } from './PinPad';
@@ -144,41 +144,67 @@ function PinEntry({ account, onBack }: { account: Account; onBack: () => void })
   const [attempts, setAttempts] = useState(0);
   const lockedOut = attempts >= 5;
 
-  async function tryUnlock() {
-    if (pin.length < 4 || busy || lockedOut) return;
+  // Known PIN length (new accounts). Legacy accounts have none — fall back to a
+  // 6-dot pad and verify once the entry is at least 4 digits.
+  const targetLen = account.pinLength ?? null;
+  const maxLen = targetLen ?? 6;
+  const verifyingRef = useRef(false);
+
+  // Auto-unlock: verify as the PIN is typed and enter the moment it's correct —
+  // no button to press. A full-length wrong PIN counts as a failed attempt.
+  useEffect(() => {
+    if (busy || lockedOut || verifyingRef.current) return;
+    const atFullLength = targetLen !== null ? pin.length === targetLen : pin.length >= 6;
+    const canTry = targetLen !== null ? pin.length === targetLen : pin.length >= 4;
+    if (!canTry) return;
+
+    let cancelled = false;
+    verifyingRef.current = true;
     setBusy(true);
-    setErr(null);
-    const ok = await unlockWithPin(account.id, pin);
-    setBusy(false);
-    if (!ok) {
-      setAttempts((a) => a + 1);
-      setErr('Incorrect PIN. Try again.');
-      setPin('');
-    }
-  }
+    (async () => {
+      const ok = await unlockWithPin(account.id, pin);
+      if (cancelled) return;
+      verifyingRef.current = false;
+      setBusy(false);
+      if (!ok && atFullLength) {
+        // Only a completed, full-length PIN counts as a wrong attempt; a shorter
+        // entry on a legacy account may still be mid-typing.
+        setAttempts((a) => a + 1);
+        setErr('Incorrect PIN. Try again.');
+        setPin('');
+      }
+    })();
+    return () => {
+      cancelled = true;
+      verifyingRef.current = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pin]);
 
   return (
     <Shell>
       <BackHeader title={`${account.name}'s PIN`} onBack={onBack} />
       <Card>
         <CardContent className="flex flex-col items-center gap-6 py-8">
+          <p className="text-sm text-muted-foreground">Enter your PIN to unlock.</p>
           <PinPad
             value={pin}
+            maxLength={maxLen}
             onChange={(v) => {
+              if (busy || lockedOut) return;
               setErr(null);
               setPin(v);
             }}
           />
-          <div className="min-h-[1.25rem] text-sm">
-            {lockedOut ? (
+          <div className="flex min-h-[1.25rem] items-center gap-2 text-sm">
+            {busy ? (
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            ) : lockedOut ? (
               <span className="text-destructive">Too many attempts. Reopen the app to retry.</span>
             ) : err ? (
               <span className="text-destructive">{err}</span>
             ) : null}
           </div>
-          <Button className="w-full" onClick={tryUnlock} disabled={pin.length < 4 || busy || lockedOut}>
-            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Unlock'}
-          </Button>
         </CardContent>
       </Card>
     </Shell>

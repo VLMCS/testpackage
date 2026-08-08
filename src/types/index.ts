@@ -11,6 +11,10 @@ export type Account = {
   startingBalanceCents: number | null;
   pinHash: string | null;
   pinSalt: string | null;
+  // Number of digits in the PIN, stored so the unlock screen can auto-submit the
+  // moment the full-length PIN is entered. Optional on accounts created before
+  // this existed (the unlock screen falls back to verifying as you type).
+  pinLength?: number | null;
   createdAt: number;
 };
 

@@ -101,6 +101,7 @@ export async function createAccount(
     startingBalanceCents: number;
     pinHash: string;
     pinSalt: string;
+    pinLength: number;
   },
   categoryChoice: 'default' | 'own',
 ): Promise<string> {
@@ -117,6 +118,7 @@ export async function createAccount(
     startingBalanceCents: data.startingBalanceCents,
     pinHash: data.pinHash,
     pinSalt: data.pinSalt,
+    pinLength: data.pinLength,
     createdAt: now,
   });
 
@@ -194,11 +196,13 @@ export async function setAccountPinAndBalance(
   pinHash: string,
   pinSalt: string,
   startingBalanceCents: number,
+  pinLength: number,
 ): Promise<void> {
   const { db } = getFirebase();
   await updateDoc(doc(db, WORKSPACES, workspaceId, 'accounts', accountId), {
     pinHash,
     pinSalt,
+    pinLength,
     startingBalanceCents,
   });
 }

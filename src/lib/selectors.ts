@@ -219,6 +219,19 @@ export function budgetProgress(limitCents: number, spentCents: number): BudgetPr
 }
 
 /**
+ * Colour band for a budget gauge, framed around how much is LEFT:
+ *  - 'full'   → nothing spent yet (green)
+ *  - 'mid'    → more than half the budget still available (amber)
+ *  - 'low'    → half or less remaining, or already over (red)
+ */
+export function budgetLevel(p: BudgetProgress): 'full' | 'mid' | 'low' {
+  if (p.over) return 'low';
+  if (p.remainingRatio >= 1) return 'full';
+  if (p.remainingRatio > 0.5) return 'mid';
+  return 'low';
+}
+
+/**
  * Whether a budget's limit applies to a given month. Recurring budgets apply to
  * every month; a one-time budget applies only to its own monthKey.
  */

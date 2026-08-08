@@ -3,7 +3,7 @@ import { useSession } from '@/hooks/useSession';
 import { useData } from '@/hooks/useData';
 import { BudgetEditorDialog } from '@/components/budgets/BudgetEditorDialog';
 import { Button } from '@/components/ui/button';
-import { budgetSpentCents, budgetProgress, budgetAppliesToMonth } from '@/lib/selectors';
+import { budgetSpentCents, budgetProgress, budgetAppliesToMonth, budgetLevel } from '@/lib/selectors';
 import { currentMonthKey, monthLabel } from '@/lib/date';
 import { formatCents } from '@/lib/money';
 import { getCategoryIcon } from '@/lib/icons';
@@ -61,11 +61,11 @@ export function BudgetsScreen({ onBack }: { onBack: () => void }) {
           const p = budgetProgress(b.amountCents, spent);
           const Icon = cat ? getCategoryIcon(cat.icon) : WalletIcon;
           const tint = cat?.color ?? '#64748b';
-          const health = p.over
-            ? { bar: '#dc2626', text: 'text-rose-600 dark:text-rose-400' }
-            : p.low
-              ? { bar: '#d97706', text: 'text-amber-600 dark:text-amber-400' }
-              : { bar: '#16a34a', text: 'text-emerald-600 dark:text-emerald-400' };
+          const health = {
+            full: { bar: '#16a34a', text: 'text-emerald-600 dark:text-emerald-400' },
+            mid: { bar: '#d97706', text: 'text-amber-600 dark:text-amber-400' },
+            low: { bar: '#dc2626', text: 'text-rose-600 dark:text-rose-400' },
+          }[budgetLevel(p)];
           const applies = budgetAppliesToMonth(b, month);
           return (
             <button

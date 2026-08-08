@@ -194,9 +194,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     if (!workspaceId) throw new Error('No workspace is loaded.');
     const { hash, salt } = await hashSecret(pin);
     // Offline-first: the Firestore write syncs on reconnect; don't block unlock.
-    void setAccountPinAndBalance(workspaceId, accountId, hash, salt, startingBalanceCents).catch(
-      (e) => console.error('PIN setup will sync on reconnect:', e),
-    );
+    void setAccountPinAndBalance(
+      workspaceId,
+      accountId,
+      hash,
+      salt,
+      startingBalanceCents,
+      pin.length,
+    ).catch((e) => console.error('PIN setup will sync on reconnect:', e));
     setActiveAccountId(accountId);
     lastAccountIdRef.current = accountId;
     localStorage.setItem(STORAGE_KEYS.lastAccount, accountId);
