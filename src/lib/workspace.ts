@@ -12,7 +12,7 @@ import {
   arrayUnion,
 } from 'firebase/firestore';
 import { getFirebase } from './firebase';
-import { ACCOUNT_DEFS, DEFAULT_CATEGORIES, DEFAULT_CURRENCY } from './constants';
+import { ACCOUNT_DEFS, DEFAULT_CATEGORIES, DEFAULT_CURRENCY, DEFAULT_WALLETS } from './constants';
 import type { Account, Workspace } from '@/types';
 
 const WORKSPACES = 'workspaces';
@@ -37,11 +37,14 @@ export async function createWorkspace(workspaceId: string, uid: string): Promise
     allowedUids: [uid],
     baseCurrency: DEFAULT_CURRENCY,
     createdAt: now,
-    schemaVersion: 3,
+    // New workspaces are seeded with wallets already, so they start at the
+    // latest schema version and skip the seedDefaultWallets back-fill migration.
+    schemaVersion: 4,
   };
   await setDoc(doc(db, WORKSPACES, workspaceId), workspace);
 
-  // Seed the two accounts, each with its OWN copy of the default categories.
+  // Seed the two accounts, each with its OWN copy of the default categories
+  // and default wallets.
   const batch = writeBatch(db);
   for (const a of ACCOUNT_DEFS) {
     batch.set(doc(db, WORKSPACES, workspaceId, 'accounts', a.id), {
@@ -67,6 +70,18 @@ export async function createWorkspace(workspaceId: string, uid: string): Promise
         excludeFromTop: false,
       });
     }
+    for (const w of DEFAULT_WALLETS) {
+      batch.set(doc(collection(db, WORKSPACES, workspaceId, 'wallets')), {
+        accountId: a.id,
+        name: w.name,
+        icon: w.icon,
+        color: w.color,
+        startingBalanceCents: 0,
+        sortOrder: w.sortOrder,
+        active: true,
+        createdAt: now,
+      });
+    }
   }
   await batch.commit();
 }
@@ -86,6 +101,7 @@ export async function createAccount(
     startingBalanceCents: number;
     pinHash: string;
     pinSalt: string;
+    pinLength: number;
   },
   categoryChoice: 'default' | 'own',
 ): Promise<string> {
@@ -102,6 +118,7 @@ export async function createAccount(
     startingBalanceCents: data.startingBalanceCents,
     pinHash: data.pinHash,
     pinSalt: data.pinSalt,
+    pinLength: data.pinLength,
     createdAt: now,
   });
 
@@ -120,6 +137,21 @@ export async function createAccount(
       isDefault: true,
       sortOrder: c.sortOrder,
       excludeFromTop: false,
+    });
+  }
+
+  // Every new account gets the default wallets so the wallet picker works
+  // immediately, regardless of the category choice above.
+  for (const w of DEFAULT_WALLETS) {
+    batch.set(doc(collection(db, WORKSPACES, workspaceId, 'wallets')), {
+      accountId: accRef.id,
+      name: w.name,
+      icon: w.icon,
+      color: w.color,
+      startingBalanceCents: 0,
+      sortOrder: w.sortOrder,
+      active: true,
+      createdAt: now,
     });
   }
   // Offline-first: don't await the commit. The doc id is generated client-side,
@@ -164,11 +196,13 @@ export async function setAccountPinAndBalance(
   pinHash: string,
   pinSalt: string,
   startingBalanceCents: number,
+  pinLength: number,
 ): Promise<void> {
   const { db } = getFirebase();
   await updateDoc(doc(db, WORKSPACES, workspaceId, 'accounts', accountId), {
     pinHash,
     pinSalt,
+    pinLength,
     startingBalanceCents,
   });
 }
@@ -211,7 +245,14 @@ export async function deleteAccount(workspaceId: string, accountId: string): Pro
   const { db } = getFirebase();
 
   const owned: ReturnType<typeof doc>[] = [doc(db, WORKSPACES, workspaceId, 'accounts', accountId)];
-  for (const sub of ['categories', 'transactions', 'recurring_templates']) {
+  for (const sub of [
+    'categories',
+    'transactions',
+    'recurring_templates',
+    'wallets',
+    'transfers',
+    'budget_allocations',
+  ]) {
     const snap = await getDocs(
       query(collection(db, WORKSPACES, workspaceId, sub), where('accountId', '==', accountId)),
     );

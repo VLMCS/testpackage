@@ -1,7 +1,8 @@
-import { doc, writeBatch, type WriteBatch } from 'firebase/firestore';
+import { collection, doc, writeBatch, type WriteBatch } from 'firebase/firestore';
 import { getFirebase } from './firebase';
 import { fetchWorkspace } from './workspace';
-import type { Account, Category, RecurringTemplate, Transaction } from '@/types';
+import { DEFAULT_WALLETS } from './constants';
+import type { Account, Category, RecurringTemplate, Transaction, Wallet } from '@/types';
 
 const WORKSPACES = 'workspaces';
 
@@ -163,4 +164,57 @@ export async function dedupeCategories(
   await finalBatch.commit();
 
   return true;
+}
+
+/**
+ * Seed the default wallets for accounts created before Wallets existed. New
+ * workspaces are already seeded at creation and start at schemaVersion 4, so this
+ * only fires for pre-existing households. Idempotent: an account that already has
+ * at least one wallet is skipped, and the version is only bumped after seeding,
+ * so a mid-way failure just re-runs safely. Guarded by schemaVersion 4.
+ *
+ * Returns true if any wallet was seeded.
+ */
+export async function seedDefaultWallets(
+  workspaceId: string,
+  accounts: Account[],
+  wallets: Wallet[],
+): Promise<boolean> {
+  const ws = await fetchWorkspace(workspaceId);
+  if (!ws || (ws.schemaVersion ?? 1) >= 4) return false;
+  const { db } = getFirebase();
+  const now = Date.now();
+
+  const haveWallet = new Set(wallets.map((w) => w.accountId));
+  const writers: Array<(b: WriteBatch) => void> = [];
+  for (const a of accounts) {
+    if (haveWallet.has(a.id)) continue; // already has wallets — leave as-is
+    for (const w of DEFAULT_WALLETS) {
+      const ref = doc(collection(db, WORKSPACES, workspaceId, 'wallets'));
+      writers.push((b) =>
+        b.set(ref, {
+          accountId: a.id,
+          name: w.name,
+          icon: w.icon,
+          color: w.color,
+          startingBalanceCents: 0,
+          sortOrder: w.sortOrder,
+          active: true,
+          createdAt: now,
+        }),
+      );
+    }
+  }
+
+  for (let i = 0; i < writers.length; i += 400) {
+    const batch = writeBatch(db);
+    for (const w of writers.slice(i, i + 400)) w(batch);
+    await batch.commit();
+  }
+
+  const finalBatch = writeBatch(db);
+  finalBatch.update(doc(db, WORKSPACES, workspaceId), { schemaVersion: 4 });
+  await finalBatch.commit();
+
+  return writers.length > 0;
 }

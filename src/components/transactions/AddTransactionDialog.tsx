@@ -9,15 +9,19 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { CategoryGrid } from '@/components/categories/CategoryGrid';
-import { CategoryCard } from '@/components/categories/CategoryCard';
 import { useSession } from '@/hooks/useSession';
 import { addTransaction, updateTransaction, deleteTransaction } from '@/lib/transactions';
 import { parseAmountToCents } from '@/lib/money';
-import { todayIso } from '@/lib/date';
+import { todayIso, monthKeyOf } from '@/lib/date';
+import { STORAGE_KEYS } from '@/lib/constants';
+import { getCategoryIcon } from '@/lib/icons';
+import { budgetAppliesToMonth } from '@/lib/selectors';
 import { cn } from '@/lib/utils';
-import type { AccountId, Category, Transaction } from '@/types';
-import { Loader2, Trash2 } from 'lucide-react';
+import type { AccountId, BudgetAllocation, Category, Transaction, Wallet } from '@/types';
+import { Loader2, Trash2, Wallet as WalletIcon } from 'lucide-react';
+
+// Per-account key so each profile remembers its own last-used wallet.
+const lastWalletKey = (accountId: AccountId) => `${STORAGE_KEYS.lastWallet}.${accountId}`;
 
 export function AddTransactionDialog({
   open,
@@ -25,6 +29,8 @@ export function AddTransactionDialog({
   workspaceId,
   accountId,
   categories,
+  wallets,
+  budgets,
   editing,
 }: {
   open: boolean;
@@ -32,11 +38,15 @@ export function AddTransactionDialog({
   workspaceId: string;
   accountId: AccountId;
   categories: Category[];
+  wallets: Wallet[];
+  budgets: BudgetAllocation[];
   editing?: Transaction | null;
 }) {
   const { baseCurrency } = useSession();
   const [type, setType] = useState<'expense' | 'income'>('expense');
   const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [walletId, setWalletId] = useState<string | null>(null);
+  const [budgetId, setBudgetId] = useState<string | null>(null);
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState(todayIso());
   const [note, setNote] = useState('');
@@ -49,6 +59,9 @@ export function AddTransactionDialog({
     if (editing) {
       setType(editing.type);
       setCategoryId(editing.categoryId);
+      // Keep whatever wallet the transaction had (or none for older ones).
+      setWalletId(editing.walletId ?? null);
+      setBudgetId(editing.budgetId ?? null);
       setAmount((editing.amountCents / 100).toString());
       setDate(editing.date);
       setNote(editing.note);
@@ -56,6 +69,15 @@ export function AddTransactionDialog({
     } else {
       setType('expense');
       setCategoryId(null);
+      // Pre-select the last-used wallet for this account if it still exists,
+      // otherwise the first wallet. Empty when the account has no wallets.
+      const remembered = localStorage.getItem(lastWalletKey(accountId));
+      const preselect =
+        (remembered && wallets.some((w) => w.id === remembered) && remembered) ||
+        wallets[0]?.id ||
+        null;
+      setWalletId(preselect);
+      setBudgetId(null);
       setAmount('');
       setDate(todayIso());
       setNote('');
@@ -63,9 +85,16 @@ export function AddTransactionDialog({
     }
     setErr(null);
     setBusy(false);
-  }, [open, editing]);
+  }, [open, editing, accountId, wallets]);
 
   const options = categories.filter((c) => c.type === type);
+
+  // Budgets you can draw this expense from: active ones that apply to the
+  // transaction's month (recurring, or one-time matching that month).
+  const txnMonth = monthKeyOf(date);
+  const applicableBudgets = budgets.filter(
+    (b) => b.active && budgetAppliesToMonth(b, txnMonth),
+  );
 
   function changeType(next: 'expense' | 'income') {
     setType(next);
@@ -73,6 +102,7 @@ export function AddTransactionDialog({
       const stillValid = categories.some((c) => c.id === prev && c.type === next);
       return stillValid ? prev : null;
     });
+    if (next === 'income') setBudgetId(null); // budgets are for spending only
   }
 
   function save() {
@@ -86,15 +116,27 @@ export function AddTransactionDialog({
       setErr('Pick a category.');
       return;
     }
+    // Require a wallet only when the account actually has wallets to choose from.
+    // Older/edited transactions with none stay valid (unassigned) for compat.
+    if (wallets.length > 0 && !walletId) {
+      setErr('Pick a wallet.');
+      return;
+    }
     setErr(null);
     setBusy(true);
+    // Remember this wallet as the default for this account's next transaction.
+    if (walletId) localStorage.setItem(lastWalletKey(accountId), walletId);
     // Offline-first: don't await the write — Firestore applies it to the local
     // cache immediately and syncs when back online (the promise stays pending
     // offline). Close right away; errors (rare) just log + retry on reconnect.
+    // Budgets only apply to expenses; income never carries one.
+    const effectiveBudgetId = type === 'expense' ? budgetId ?? null : null;
     const op = editing
       ? updateTransaction(workspaceId, editing.id, {
           type,
           categoryId,
+          walletId: walletId ?? null,
+          budgetId: effectiveBudgetId,
           amountCents: cents,
           date,
           note: note.trim(),
@@ -103,6 +145,8 @@ export function AddTransactionDialog({
       : addTransaction(workspaceId, {
           accountId,
           categoryId,
+          walletId: walletId ?? null,
+          budgetId: effectiveBudgetId,
           type,
           amountCents: cents,
           date,
@@ -162,6 +206,25 @@ export function AddTransactionDialog({
           />
         </div>
 
+        {wallets.length > 0 && (
+          <div className="space-y-2">
+            <Label>{type === 'expense' ? 'From wallet' : 'To wallet'}</Label>
+            <div className="flex flex-wrap gap-2">
+              {wallets.map((w) => (
+                <WalletChip
+                  key={w.id}
+                  wallet={w}
+                  selected={walletId === w.id}
+                  onClick={() => {
+                    setErr(null);
+                    setWalletId(w.id);
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="space-y-2">
           <Label>Category</Label>
           {options.length === 0 ? (
@@ -169,23 +232,50 @@ export function AddTransactionDialog({
               No {type} categories yet — add some in the Categories tab.
             </p>
           ) : (
-            <div className="max-h-56 overflow-y-auto pr-1">
-              <CategoryGrid>
-                {options.map((c) => (
-                  <CategoryCard
-                    key={c.id}
-                    category={c}
-                    selected={categoryId === c.id}
-                    onClick={() => {
-                      setErr(null);
-                      setCategoryId(c.id);
-                    }}
-                  />
-                ))}
-              </CategoryGrid>
+            <div className="flex max-h-40 flex-wrap gap-2 overflow-y-auto pr-1">
+              {options.map((c) => (
+                <CategoryChip
+                  key={c.id}
+                  category={c}
+                  selected={categoryId === c.id}
+                  onClick={() => {
+                    setErr(null);
+                    setCategoryId(c.id);
+                  }}
+                />
+              ))}
             </div>
           )}
         </div>
+
+        {type === 'expense' && applicableBudgets.length > 0 && (
+          <div className="space-y-2">
+            <Label>Budget</Label>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setBudgetId(null)}
+                className={cn(
+                  'flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors',
+                  budgetId === null
+                    ? 'border-transparent bg-foreground text-background'
+                    : 'bg-background text-foreground',
+                )}
+              >
+                No budget
+              </button>
+              {applicableBudgets.map((b) => (
+                <BudgetChip
+                  key={b.id}
+                  budget={b}
+                  category={categories.find((c) => c.id === b.categoryId) ?? null}
+                  selected={budgetId === b.id}
+                  onClick={() => setBudgetId(b.id)}
+                />
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="space-y-2">
           <Label htmlFor="date">Date</Label>
@@ -203,13 +293,7 @@ export function AddTransactionDialog({
         </div>
 
         <div className="flex items-center justify-between gap-3 rounded-lg border p-3">
-          <div className="min-w-0 space-y-0.5">
-            <Label htmlFor="notTracked">Not tracked</Label>
-            <p className="text-xs text-muted-foreground">
-              Still changes your balance, but left out of Spending, Saved, and insights — for
-              transfers like moving money to savings.
-            </p>
-          </div>
+          <Label htmlFor="notTracked">Not tracked</Label>
           <Switch id="notTracked" checked={notTracked} onCheckedChange={setNotTracked} />
         </div>
 
@@ -240,5 +324,90 @@ export function AddTransactionDialog({
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function WalletChip({
+  wallet,
+  selected,
+  onClick,
+}: {
+  wallet: Wallet;
+  selected: boolean;
+  onClick: () => void;
+}) {
+  const Icon = getCategoryIcon(wallet.icon);
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors',
+        selected ? 'border-transparent text-white' : 'bg-background text-foreground',
+      )}
+      style={selected ? { backgroundColor: wallet.color } : undefined}
+    >
+      <Icon className="h-4 w-4" style={selected ? undefined : { color: wallet.color }} />
+      {wallet.name}
+    </button>
+  );
+}
+
+function BudgetChip({
+  budget,
+  category,
+  selected,
+  onClick,
+}: {
+  budget: BudgetAllocation;
+  category: Category | null;
+  selected: boolean;
+  onClick: () => void;
+}) {
+  const Icon = category ? getCategoryIcon(category.icon) : WalletIcon;
+  const tint = category?.color ?? '#64748b';
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors',
+        selected ? 'border-transparent text-white' : 'bg-background text-foreground',
+      )}
+      style={selected ? { backgroundColor: tint } : undefined}
+    >
+      <Icon className="h-4 w-4" style={selected ? undefined : { color: tint }} />
+      {budget.name}
+    </button>
+  );
+}
+
+function CategoryChip({
+  category,
+  selected,
+  onClick,
+}: {
+  category: Category;
+  selected: boolean;
+  onClick: () => void;
+}) {
+  const Icon = getCategoryIcon(category.icon);
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors',
+        selected ? 'border-transparent text-white' : 'bg-background text-foreground',
+      )}
+      style={selected ? { backgroundColor: category.color } : undefined}
+    >
+      {category.imageUrl ? (
+        <img src={category.imageUrl} alt="" className="h-4 w-4 rounded-full object-cover" />
+      ) : (
+        <Icon className="h-4 w-4" style={selected ? undefined : { color: category.color }} />
+      )}
+      {category.name}
+    </button>
   );
 }

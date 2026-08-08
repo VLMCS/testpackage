@@ -8,7 +8,10 @@ export type Tab =
   | 'categories'
   | 'profile'
   | 'analytics'
-  | 'settings';
+  | 'settings'
+  | 'wallets'
+  | 'plans'
+  | 'budgets';
 
 export function BottomNav({
   active,

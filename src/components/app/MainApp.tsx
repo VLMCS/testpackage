@@ -14,7 +14,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { gradientFromHex } from '@/lib/theme';
-import { migrateCategoriesPerAccount, dedupeCategories } from '@/lib/migrate';
+import { migrateCategoriesPerAccount, dedupeCategories, seedDefaultWallets } from '@/lib/migrate';
 import { Check, Loader2, WifiOff } from 'lucide-react';
 
 // Lazy-load the non-default screens so the initial bundle stays small.
@@ -36,14 +36,33 @@ const ProfileScreen = lazy(() =>
 const SettingsScreen = lazy(() =>
   import('./SettingsScreen').then((m) => ({ default: m.SettingsScreen })),
 );
+const WalletsScreen = lazy(() =>
+  import('./WalletsScreen').then((m) => ({ default: m.WalletsScreen })),
+);
+const PlansScreen = lazy(() =>
+  import('./PlansScreen').then((m) => ({ default: m.PlansScreen })),
+);
+const BudgetsScreen = lazy(() =>
+  import('./BudgetsScreen').then((m) => ({ default: m.BudgetsScreen })),
+);
 
 export function MainApp() {
   const { activeAccount, accounts, workspaceId } = useSession();
-  const { categories, transactions, recurringTemplates, loading, pendingWrites } = useData();
+  const { categories, transactions, recurringTemplates, wallets, budgets, loading, pendingWrites } =
+    useData();
   const online = useOnlineStatus();
   const [tab, setTab] = useState<Tab>('home');
+  // The tab a sub-screen (Wallets/Plans/Settings) should return to on "back" —
+  // whatever tab it was opened from (e.g. Home when opened via the dashboard).
+  const [parentTab, setParentTab] = useState<Tab>('home');
   const [addOpen, setAddOpen] = useState(false);
   const [exitOpen, setExitOpen] = useState(false);
+
+  // Open a sub-screen, remembering where we came from so "back" returns there.
+  function openSubScreen(target: Tab) {
+    setParentTab(tab);
+    setTab(target);
+  }
 
   // Mirror nav state into refs so the mount-once back-handler reads fresh values.
   const tabRef = useRef(tab);
@@ -94,6 +113,7 @@ export function MainApp() {
     migratedRef.current = true;
     void (async () => {
       // v2: per-account category copies. v3: merge exact duplicates.
+      // v4: seed default wallets for pre-existing accounts.
       await migrateCategoriesPerAccount(
         workspaceId,
         accounts,
@@ -102,14 +122,17 @@ export function MainApp() {
         recurringTemplates,
       );
       await dedupeCategories(workspaceId, categories, transactions, recurringTemplates);
+      await seedDefaultWallets(workspaceId, accounts, wallets);
     })().catch(() => {
       migratedRef.current = false; // allow a retry next render if it failed
     });
-  }, [loading, workspaceId, accounts, categories, transactions, recurringTemplates]);
+  }, [loading, workspaceId, accounts, categories, transactions, recurringTemplates, wallets]);
 
   if (!activeAccount || !workspaceId) return null;
 
   const myCategories = categories.filter((c) => c.accountId === activeAccount.id);
+  const myWallets = wallets.filter((w) => w.accountId === activeAccount.id && w.active);
+  const myBudgets = budgets.filter((b) => b.accountId === activeAccount.id && b.active);
 
   const fallback = (
     <div className="flex justify-center py-24">
@@ -153,14 +176,26 @@ export function MainApp() {
               <Dashboard
                 onViewAll={() => setTab('activity')}
                 onInsights={() => setTab('analytics')}
+                onOpenWallets={() => openSubScreen('wallets')}
+                onOpenBudgets={() => openSubScreen('budgets')}
               />
             )}
             {tab === 'activity' && <TransactionsScreen />}
             {tab === 'recurring' && <RecurringScreen />}
             {tab === 'categories' && <CategoriesScreen />}
             {tab === 'analytics' && <AnalyticsScreen onBack={() => setTab('home')} />}
-            {tab === 'profile' && <ProfileScreen onOpenSettings={() => setTab('settings')} />}
-            {tab === 'settings' && <SettingsScreen onBack={() => setTab('profile')} />}
+            {tab === 'profile' && (
+              <ProfileScreen
+                onOpenSettings={() => openSubScreen('settings')}
+                onOpenWallets={() => openSubScreen('wallets')}
+                onOpenPlans={() => openSubScreen('plans')}
+                onOpenBudgets={() => openSubScreen('budgets')}
+              />
+            )}
+            {tab === 'settings' && <SettingsScreen onBack={() => setTab(parentTab)} />}
+            {tab === 'wallets' && <WalletsScreen onBack={() => setTab(parentTab)} />}
+            {tab === 'plans' && <PlansScreen onBack={() => setTab(parentTab)} />}
+            {tab === 'budgets' && <BudgetsScreen onBack={() => setTab(parentTab)} />}
           </Suspense>
         )}
       </main>
@@ -173,6 +208,8 @@ export function MainApp() {
         workspaceId={workspaceId}
         accountId={activeAccount.id}
         categories={myCategories}
+        wallets={myWallets}
+        budgets={myBudgets}
       />
 
       <Dialog open={exitOpen} onOpenChange={setExitOpen}>

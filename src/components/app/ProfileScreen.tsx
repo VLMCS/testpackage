@@ -5,14 +5,33 @@ import { ProfileEditorDialog } from '@/components/profile/ProfileEditorDialog';
 import { AdminModeDialog } from '@/components/profile/AdminModeDialog';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { currentBalanceCents } from '@/lib/selectors';
+import { netWorthCents } from '@/lib/selectors';
 import { formatCents } from '@/lib/money';
 import { gradientFromHex } from '@/lib/theme';
-import { ChevronRight, Cog, Pencil, RefreshCw, Settings } from 'lucide-react';
+import {
+  ChevronRight,
+  Cog,
+  Pencil,
+  PieChart,
+  RefreshCw,
+  Settings,
+  Target,
+  Wallet,
+} from 'lucide-react';
 
-export function ProfileScreen({ onOpenSettings }: { onOpenSettings: () => void }) {
+export function ProfileScreen({
+  onOpenSettings,
+  onOpenWallets,
+  onOpenPlans,
+  onOpenBudgets,
+}: {
+  onOpenSettings: () => void;
+  onOpenWallets: () => void;
+  onOpenPlans: () => void;
+  onOpenBudgets: () => void;
+}) {
   const { activeAccount, baseCurrency, workspaceId, lock } = useSession();
-  const { transactions } = useData();
+  const { transactions, wallets, transfers, financePlans, budgets } = useData();
   const [editing, setEditing] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
 
@@ -48,7 +67,8 @@ export function ProfileScreen({ onOpenSettings }: { onOpenSettings: () => void }
           <div className="min-w-0 flex-1">
             <p className="truncate text-lg font-semibold">{activeAccount.name}</p>
             <p className="text-sm text-muted-foreground">
-              Balance {formatCents(currentBalanceCents(activeAccount, transactions), baseCurrency)}
+              Net worth{' '}
+              {formatCents(netWorthCents(activeAccount, wallets, transactions, transfers), baseCurrency)}
             </p>
           </div>
           <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
@@ -56,6 +76,51 @@ export function ProfileScreen({ onOpenSettings }: { onOpenSettings: () => void }
           </Button>
         </CardContent>
       </Card>
+
+      <button
+        type="button"
+        onClick={onOpenWallets}
+        className="flex w-full items-center justify-between rounded-xl border bg-card p-4 text-left shadow-sm transition-colors hover:bg-accent"
+      >
+        <span className="flex items-center gap-3">
+          <Wallet className="h-5 w-5 text-muted-foreground" />
+          <span className="font-medium">Wallets</span>
+        </span>
+        <span className="flex items-center gap-2 text-sm text-muted-foreground">
+          {wallets.filter((w) => w.accountId === activeAccount.id).length}
+          <ChevronRight className="h-5 w-5" />
+        </span>
+      </button>
+
+      <button
+        type="button"
+        onClick={onOpenBudgets}
+        className="flex w-full items-center justify-between rounded-xl border bg-card p-4 text-left shadow-sm transition-colors hover:bg-accent"
+      >
+        <span className="flex items-center gap-3">
+          <PieChart className="h-5 w-5 text-muted-foreground" />
+          <span className="font-medium">Budgets</span>
+        </span>
+        <span className="flex items-center gap-2 text-sm text-muted-foreground">
+          {budgets.filter((b) => b.accountId === activeAccount.id).length}
+          <ChevronRight className="h-5 w-5" />
+        </span>
+      </button>
+
+      <button
+        type="button"
+        onClick={onOpenPlans}
+        className="flex w-full items-center justify-between rounded-xl border bg-card p-4 text-left shadow-sm transition-colors hover:bg-accent"
+      >
+        <span className="flex items-center gap-3">
+          <Target className="h-5 w-5 text-muted-foreground" />
+          <span className="font-medium">Finance Plans</span>
+        </span>
+        <span className="flex items-center gap-2 text-sm text-muted-foreground">
+          {financePlans.filter((p) => p.accountId === activeAccount.id).length}
+          <ChevronRight className="h-5 w-5" />
+        </span>
+      </button>
 
       <button
         type="button"

@@ -34,6 +34,8 @@ import {
   Repeat,
   CreditCard,
   Receipt,
+  Landmark,
+  Smartphone,
   Tag,
   type LucideIcon,
 } from 'lucide-react';
@@ -76,6 +78,8 @@ export const CATEGORY_ICONS: Record<string, LucideIcon> = {
   Repeat,
   CreditCard,
   Receipt,
+  Landmark,
+  Smartphone,
   Tag,
 };
 
