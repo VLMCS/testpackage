@@ -16,7 +16,7 @@ import { getCategoryIcon } from '@/lib/icons';
 import { gradientFromHex, isLightColor } from '@/lib/theme';
 import { parseAmountToCents, formatCents } from '@/lib/money';
 import { projectInterest, FREQUENCY_LABEL } from '@/lib/interest';
-import { WALLET_PRESETS } from '@/lib/constants';
+import { WALLET_PRESETS, INTEREST_RATES_AS_OF, type WalletPreset } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import { addWallet, updateWallet, deleteWallet } from '@/lib/wallets';
 import { useSession } from '@/hooks/useSession';
@@ -118,6 +118,31 @@ export function WalletEditorDialog({
     return { interest: { frequency, tiers: built, withholdingTaxPercent: taxPct } };
   }
 
+  // Apply a quick-add preset: name/color/icon, plus interest when the preset
+  // carries a known rate (otherwise clear interest back to defaults).
+  function applyPreset(p: WalletPreset) {
+    setErr(null);
+    setName(p.name);
+    setColor(p.color);
+    setIcon(p.icon);
+    if (p.interest) {
+      setInterestOn(true);
+      setFrequency(p.interest.frequency);
+      setTax(String(p.interest.withholdingTaxPercent));
+      setTiers(
+        p.interest.tiers.map((t) => ({
+          rate: String(t.ratePercent),
+          upTo: t.upToCents === null ? '' : String(t.upToCents / 100),
+        })),
+      );
+    } else {
+      setInterestOn(false);
+      setFrequency('monthly');
+      setTiers([{ rate: '', upTo: '' }]);
+      setTax('20');
+    }
+  }
+
   // Live projection preview from the current inputs (0 until valid).
   const previewProjection = (() => {
     if (!interestOn) return null;
@@ -209,12 +234,7 @@ export function WalletEditorDialog({
                   <button
                     key={p.name}
                     type="button"
-                    onClick={() => {
-                      setErr(null);
-                      setName(p.name);
-                      setColor(p.color);
-                      setIcon(p.icon);
-                    }}
+                    onClick={() => applyPreset(p)}
                     className="flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors hover:bg-accent"
                   >
                     <PIcon className="h-4 w-4" style={{ color: p.color }} />
@@ -302,6 +322,9 @@ export function WalletEditorDialog({
 
               <div className="space-y-1.5">
                 <Label>Annual rate {tiers.length > 1 ? '(tiered)' : ''}</Label>
+                <p className="text-xs text-muted-foreground">
+                  Preset rates are as of {INTEREST_RATES_AS_OF} — verify against your bank.
+                </p>
                 {tiers.map((t, i) => {
                   const isLast = i === tiers.length - 1;
                   return (

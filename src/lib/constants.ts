@@ -1,4 +1,4 @@
-import type { AccountId, CategoryType } from '@/types';
+import type { AccountId, CategoryType, WalletInterest } from '@/types';
 
 export const STORAGE_KEYS = {
   workspaceId: 'budget.workspaceId',
@@ -99,24 +99,87 @@ export const PLAN_PRESETS: PlanPreset[] = [
   { name: 'Education', icon: 'GraduationCap', color: '#2563eb' },
 ];
 
-export type WalletPreset = { name: string; icon: string; color: string };
+export type WalletPreset = {
+  name: string;
+  icon: string;
+  color: string;
+  // Optional starting interest config. These are published base rates captured
+  // on the date below — they change often, so they're only a starting point the
+  // user confirms/edits. Omitted for accounts without a stable published rate
+  // (traditional banks, promo-heavy e-wallets).
+  interest?: WalletInterest;
+};
 
-// Quick-add presets for common Philippine banks and e-wallets. Picking one just
-// pre-fills the New Wallet form (name/color/icon) — the user can still edit
-// everything before saving. Colors approximate each brand; icons come from the
-// shared icon registry (see src/lib/icons.ts). Purely cosmetic starting points.
+// When the preset interest rates below were last checked. Shown in the editor so
+// the user knows to verify against their bank.
+export const INTEREST_RATES_AS_OF = 'July 2026';
+
+// Quick-add presets for common Philippine banks and e-wallets. Picking one
+// pre-fills the New Wallet form (name/color/icon, and interest when known). The
+// user can still edit everything before saving. Colors approximate each brand.
 export const WALLET_PRESETS: WalletPreset[] = [
   { name: 'Cash', icon: 'Wallet', color: '#16a34a' },
   { name: 'GCash', icon: 'Smartphone', color: '#0a7ff0' },
-  { name: 'Maya', icon: 'Smartphone', color: '#16b25a' },
+  { name: 'Maya', icon: 'Smartphone', color: '#16b25a' }, // promo-based rate — set it yourself
   { name: 'BDO', icon: 'Landmark', color: '#1a3f8b' },
   { name: 'BPI', icon: 'Landmark', color: '#b01116' },
-  { name: 'GoTyme', icon: 'Landmark', color: '#00b6cf' },
-  { name: 'Maribank', icon: 'Landmark', color: '#f45c1f' },
-  { name: 'Netbank', icon: 'Landmark', color: '#0f766e' },
-  { name: 'SeaBank', icon: 'Landmark', color: '#f6511d' },
+  {
+    name: 'GoTyme',
+    icon: 'Landmark',
+    color: '#00b6cf',
+    interest: {
+      frequency: 'monthly',
+      tiers: [{ upToCents: null, ratePercent: 3.0 }],
+      withholdingTaxPercent: 20,
+    },
+  },
+  {
+    name: 'Maribank',
+    icon: 'Landmark',
+    color: '#f45c1f',
+    interest: {
+      frequency: 'daily',
+      tiers: [
+        { upToCents: 100_000_000, ratePercent: 3.25 }, // up to PHP 1,000,000
+        { upToCents: null, ratePercent: 3.75 }, // and above
+      ],
+      withholdingTaxPercent: 20,
+    },
+  },
+  {
+    name: 'Netbank',
+    icon: 'Landmark',
+    color: '#0f766e',
+    interest: {
+      frequency: 'monthly',
+      tiers: [{ upToCents: null, ratePercent: 3.25 }],
+      withholdingTaxPercent: 20,
+    },
+  },
+  {
+    name: 'SeaBank',
+    icon: 'Landmark',
+    color: '#f6511d',
+    interest: {
+      frequency: 'daily',
+      tiers: [
+        { upToCents: 100_000_000, ratePercent: 3.25 },
+        { upToCents: null, ratePercent: 3.75 },
+      ],
+      withholdingTaxPercent: 20,
+    },
+  },
   { name: 'UnionBank', icon: 'Landmark', color: '#f79008' },
   { name: 'Metrobank', icon: 'Landmark', color: '#0a2a66' },
-  { name: 'CIMB', icon: 'Landmark', color: '#7a141d' },
+  {
+    name: 'CIMB',
+    icon: 'Landmark',
+    color: '#7a141d',
+    interest: {
+      frequency: 'monthly',
+      tiers: [{ upToCents: null, ratePercent: 2.3 }],
+      withholdingTaxPercent: 20,
+    },
+  },
   { name: 'Credit Card', icon: 'CreditCard', color: '#6d28d9' },
 ];
