@@ -1,19 +1,20 @@
 import { useMemo } from 'react';
 import { useSession } from '@/hooks/useSession';
 import { useData } from '@/hooks/useData';
-import { currentMonthKey, monthLabel } from '@/lib/date';
+import { currentMonthKey, monthLabel, todayIso, friendlyDate } from '@/lib/date';
 import {
   totalsForMonth,
-  currentBalanceCents,
   topSpendingCategories,
   walletBalanceCents,
+  netWorthCents,
+  spentOnDayCents,
 } from '@/lib/selectors';
 import { formatCents } from '@/lib/money';
 import { getCategoryIcon } from '@/lib/icons';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { TransactionList } from '@/components/transactions/TransactionList';
-import { ArrowDownRight, ArrowUpRight, ChevronRight, PiggyBank, Trophy } from 'lucide-react';
+import { ArrowDownRight, ArrowUpRight, CalendarDays, ChevronRight, PiggyBank, Trophy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export function Dashboard({
@@ -39,9 +40,13 @@ export function Dashboard({
     () => totalsForMonth(transactions, accId, month),
     [transactions, accId, month],
   );
-  const balance = useMemo(
-    () => (activeAccount ? currentBalanceCents(activeAccount, transactions) : 0),
-    [activeAccount, transactions],
+  const netWorth = useMemo(
+    () => (activeAccount ? netWorthCents(activeAccount, wallets, transactions, transfers) : 0),
+    [activeAccount, wallets, transactions, transfers],
+  );
+  const spentToday = useMemo(
+    () => spentOnDayCents(transactions, accId, todayIso()),
+    [transactions, accId],
   );
   const myCats = useMemo(() => categories.filter((c) => c.accountId === accId), [categories, accId]);
   const top = useMemo(() => {
@@ -59,8 +64,25 @@ export function Dashboard({
     <div className="space-y-5">
       <Card className="bg-accent-gradient border-0 text-primary-foreground">
         <CardContent className="py-5">
-          <p className="text-xs opacity-80">{activeAccount.name}'s balance</p>
-          <p className="text-3xl font-bold tracking-tight">{formatCents(balance, baseCurrency)}</p>
+          <p className="text-xs opacity-80">{activeAccount.name}'s net worth</p>
+          <p className="text-3xl font-bold tracking-tight">{formatCents(netWorth, baseCurrency)}</p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="flex items-center justify-between py-4">
+          <div className="flex items-center gap-3">
+            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300">
+              <CalendarDays className="h-4 w-4" />
+            </span>
+            <div>
+              <p className="text-xs text-muted-foreground">Spent today</p>
+              <p className="text-lg font-semibold tracking-tight">
+                {formatCents(spentToday, baseCurrency)}
+              </p>
+            </div>
+          </div>
+          <span className="text-xs text-muted-foreground">{friendlyDate(todayIso())}</span>
         </CardContent>
       </Card>
 

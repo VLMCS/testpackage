@@ -9,8 +9,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { CategoryGrid } from '@/components/categories/CategoryGrid';
-import { CategoryCard } from '@/components/categories/CategoryCard';
 import { useSession } from '@/hooks/useSession';
 import { addTransaction, updateTransaction, deleteTransaction } from '@/lib/transactions';
 import { parseAmountToCents } from '@/lib/money';
@@ -216,20 +214,18 @@ export function AddTransactionDialog({
               No {type} categories yet — add some in the Categories tab.
             </p>
           ) : (
-            <div className="max-h-56 overflow-y-auto pr-1">
-              <CategoryGrid>
-                {options.map((c) => (
-                  <CategoryCard
-                    key={c.id}
-                    category={c}
-                    selected={categoryId === c.id}
-                    onClick={() => {
-                      setErr(null);
-                      setCategoryId(c.id);
-                    }}
-                  />
-                ))}
-              </CategoryGrid>
+            <div className="flex max-h-40 flex-wrap gap-2 overflow-y-auto pr-1">
+              {options.map((c) => (
+                <CategoryChip
+                  key={c.id}
+                  category={c}
+                  selected={categoryId === c.id}
+                  onClick={() => {
+                    setErr(null);
+                    setCategoryId(c.id);
+                  }}
+                />
+              ))}
             </div>
           )}
         </div>
@@ -250,13 +246,7 @@ export function AddTransactionDialog({
         </div>
 
         <div className="flex items-center justify-between gap-3 rounded-lg border p-3">
-          <div className="min-w-0 space-y-0.5">
-            <Label htmlFor="notTracked">Not tracked</Label>
-            <p className="text-xs text-muted-foreground">
-              Still changes your balance, but left out of Spending, Saved, and insights — for
-              transfers like moving money to savings.
-            </p>
-          </div>
+          <Label htmlFor="notTracked">Not tracked</Label>
           <Switch id="notTracked" checked={notTracked} onCheckedChange={setNotTracked} />
         </div>
 
@@ -312,6 +302,36 @@ function WalletChip({
     >
       <Icon className="h-4 w-4" style={selected ? undefined : { color: wallet.color }} />
       {wallet.name}
+    </button>
+  );
+}
+
+function CategoryChip({
+  category,
+  selected,
+  onClick,
+}: {
+  category: Category;
+  selected: boolean;
+  onClick: () => void;
+}) {
+  const Icon = getCategoryIcon(category.icon);
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors',
+        selected ? 'border-transparent text-white' : 'bg-background text-foreground',
+      )}
+      style={selected ? { backgroundColor: category.color } : undefined}
+    >
+      {category.imageUrl ? (
+        <img src={category.imageUrl} alt="" className="h-4 w-4 rounded-full object-cover" />
+      ) : (
+        <Icon className="h-4 w-4" style={selected ? undefined : { color: category.color }} />
+      )}
+      {category.name}
     </button>
   );
 }

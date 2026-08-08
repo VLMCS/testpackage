@@ -5,7 +5,7 @@ import { ProfileEditorDialog } from '@/components/profile/ProfileEditorDialog';
 import { AdminModeDialog } from '@/components/profile/AdminModeDialog';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { currentBalanceCents } from '@/lib/selectors';
+import { netWorthCents } from '@/lib/selectors';
 import { formatCents } from '@/lib/money';
 import { gradientFromHex } from '@/lib/theme';
 import { ChevronRight, Cog, Pencil, RefreshCw, Settings, Target, Wallet } from 'lucide-react';
@@ -20,7 +20,7 @@ export function ProfileScreen({
   onOpenPlans: () => void;
 }) {
   const { activeAccount, baseCurrency, workspaceId, lock } = useSession();
-  const { transactions, wallets, financePlans } = useData();
+  const { transactions, wallets, transfers, financePlans } = useData();
   const [editing, setEditing] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
 
@@ -56,7 +56,8 @@ export function ProfileScreen({
           <div className="min-w-0 flex-1">
             <p className="truncate text-lg font-semibold">{activeAccount.name}</p>
             <p className="text-sm text-muted-foreground">
-              Balance {formatCents(currentBalanceCents(activeAccount, transactions), baseCurrency)}
+              Net worth{' '}
+              {formatCents(netWorthCents(activeAccount, wallets, transactions, transfers), baseCurrency)}
             </p>
           </div>
           <Button variant="outline" size="sm" onClick={() => setEditing(true)}>

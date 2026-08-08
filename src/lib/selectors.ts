@@ -157,6 +157,42 @@ export function unassignedBalanceCents(
   return balance;
 }
 
+/**
+ * Net worth for one account: the Unassigned bucket plus every one of the
+ * account's wallets. This is the honest total of all the account's money and
+ * matches the "Across all wallets" total on the Wallets screen. Unlike
+ * currentBalanceCents, it includes wallet opening balances.
+ */
+export function netWorthCents(
+  account: Account,
+  wallets: Wallet[],
+  txns: Transaction[],
+  transfers: Transfer[] = [],
+): number {
+  let total = unassignedBalanceCents(account, txns, transfers);
+  for (const w of wallets) {
+    if (w.accountId !== account.id) continue;
+    total += walletBalanceCents(w, txns, transfers);
+  }
+  return total;
+}
+
+/** Tracked expense total for one account on a single ISO day (yyyy-MM-dd). */
+export function spentOnDayCents(
+  txns: Transaction[],
+  accountId: string,
+  dayIso: string,
+): number {
+  let sum = 0;
+  for (const t of txns) {
+    if (t.accountId !== accountId || t.type !== 'expense') continue;
+    if (t.notTracked) continue; // transfers/savings moves aren't spending
+    if (t.date !== dayIso) continue;
+    sum += t.amountCents;
+  }
+  return sum;
+}
+
 /** Map of categoryId → expense cents for one account in one month. */
 export function spendingByCategory(
   txns: Transaction[],

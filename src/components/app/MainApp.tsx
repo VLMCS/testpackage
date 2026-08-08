@@ -49,8 +49,17 @@ export function MainApp() {
     useData();
   const online = useOnlineStatus();
   const [tab, setTab] = useState<Tab>('home');
+  // The tab a sub-screen (Wallets/Plans/Settings) should return to on "back" —
+  // whatever tab it was opened from (e.g. Home when opened via the dashboard).
+  const [parentTab, setParentTab] = useState<Tab>('home');
   const [addOpen, setAddOpen] = useState(false);
   const [exitOpen, setExitOpen] = useState(false);
+
+  // Open a sub-screen, remembering where we came from so "back" returns there.
+  function openSubScreen(target: Tab) {
+    setParentTab(tab);
+    setTab(target);
+  }
 
   // Mirror nav state into refs so the mount-once back-handler reads fresh values.
   const tabRef = useRef(tab);
@@ -163,7 +172,7 @@ export function MainApp() {
               <Dashboard
                 onViewAll={() => setTab('activity')}
                 onInsights={() => setTab('analytics')}
-                onOpenWallets={() => setTab('wallets')}
+                onOpenWallets={() => openSubScreen('wallets')}
               />
             )}
             {tab === 'activity' && <TransactionsScreen />}
@@ -172,14 +181,14 @@ export function MainApp() {
             {tab === 'analytics' && <AnalyticsScreen onBack={() => setTab('home')} />}
             {tab === 'profile' && (
               <ProfileScreen
-                onOpenSettings={() => setTab('settings')}
-                onOpenWallets={() => setTab('wallets')}
-                onOpenPlans={() => setTab('plans')}
+                onOpenSettings={() => openSubScreen('settings')}
+                onOpenWallets={() => openSubScreen('wallets')}
+                onOpenPlans={() => openSubScreen('plans')}
               />
             )}
-            {tab === 'settings' && <SettingsScreen onBack={() => setTab('profile')} />}
-            {tab === 'wallets' && <WalletsScreen onBack={() => setTab('profile')} />}
-            {tab === 'plans' && <PlansScreen onBack={() => setTab('profile')} />}
+            {tab === 'settings' && <SettingsScreen onBack={() => setTab(parentTab)} />}
+            {tab === 'wallets' && <WalletsScreen onBack={() => setTab(parentTab)} />}
+            {tab === 'plans' && <PlansScreen onBack={() => setTab(parentTab)} />}
           </Suspense>
         )}
       </main>
