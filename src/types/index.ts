@@ -51,6 +51,23 @@ export type Category = {
 // wallet's balance is derived: startingBalanceCents + the transactions assigned
 // to it (see walletBalanceCents in src/lib/selectors.ts). Wallets are additive —
 // older transactions have no walletId and are treated as "unassigned".
+// One band of a tiered interest rate. The portion of the balance between the
+// previous tier's ceiling and this tier's `upToCents` earns `ratePercent` (annual,
+// p.a.). The final tier uses `upToCents: null` to mean "and above".
+export type InterestTier = {
+  upToCents: number | null;
+  ratePercent: number; // annual percentage rate for this band
+};
+
+// Optional interest configuration for a wallet (e.g. a savings account). Additive
+// — wallets without it simply earn nothing. `frequency` is how often the bank
+// credits interest and can be changed anytime. A single tier means a flat rate.
+export type WalletInterest = {
+  frequency: 'daily' | 'weekly' | 'monthly';
+  tiers: InterestTier[];
+  withholdingTaxPercent: number; // 0–100, e.g. 20 for PH final withholding tax
+};
+
 export type Wallet = {
   id: string;
   accountId: AccountId; // owner — wallets are per-account, like categories
@@ -61,6 +78,9 @@ export type Wallet = {
   sortOrder: number;
   active: boolean;
   createdAt: number;
+  // Present when the wallet earns interest. Used to project earnings; interest
+  // is not auto-posted as transactions in this version.
+  interest?: WalletInterest | null;
 };
 
 // Moves money between two of an account's wallets without being spending or

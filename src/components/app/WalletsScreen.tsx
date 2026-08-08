@@ -6,6 +6,7 @@ import { TransferDialog } from '@/components/wallets/TransferDialog';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { walletBalanceCents, unassignedBalanceCents } from '@/lib/selectors';
+import { projectInterest, FREQUENCY_LABEL } from '@/lib/interest';
 import { formatCents } from '@/lib/money';
 import { getCategoryIcon } from '@/lib/icons';
 import { gradientFromHex } from '@/lib/theme';
@@ -82,6 +83,7 @@ export function WalletsScreen({ onBack }: { onBack: () => void }) {
         {mine.map((w) => {
           const Icon = getCategoryIcon(w.icon);
           const bal = walletBalanceCents(w, transactions, transfers);
+          const proj = w.interest ? projectInterest(bal, w.interest) : null;
           return (
             <button
               key={w.id}
@@ -95,7 +97,14 @@ export function WalletsScreen({ onBack }: { onBack: () => void }) {
               >
                 <Icon className="h-5 w-5" />
               </span>
-              <span className="min-w-0 flex-1 font-medium">{w.name}</span>
+              <span className="min-w-0 flex-1">
+                <span className="block font-medium">{w.name}</span>
+                {proj && (
+                  <span className="block text-xs text-emerald-600 dark:text-emerald-400">
+                    +{formatCents(proj.perPeriodCents, baseCurrency)}/{FREQUENCY_LABEL[w.interest!.frequency]} interest
+                  </span>
+                )}
+              </span>
               <span className="shrink-0 font-semibold tabular-nums">
                 {formatCents(bal, baseCurrency)}
               </span>
