@@ -182,28 +182,30 @@ export function Dashboard({
           <Card>
             <CardContent className="space-y-3 py-4">
               {myBudgets.map((b) => {
-                const cat = b.categoryId ? myCats.find((c) => c.id === b.categoryId) : undefined;
                 const spent = budgetSpentCents(transactions, b.id, month);
                 const p = budgetProgress(b.amountCents, spent);
-                const tint = cat?.color ?? '#64748b';
-                const barColor = p.over ? '#dc2626' : tint;
+                const health = p.over
+                  ? { bar: '#dc2626', text: 'text-rose-600 dark:text-rose-400' }
+                  : p.low
+                    ? { bar: '#d97706', text: 'text-amber-600 dark:text-amber-400' }
+                    : { bar: '#16a34a', text: 'text-emerald-600 dark:text-emerald-400' };
                 return (
                   <div key={b.id}>
                     <div className="mb-1 flex items-center justify-between text-xs">
                       <span className="font-medium">{b.name}</span>
-                      <span
-                        className={cn(
-                          'tabular-nums',
-                          p.over ? 'text-rose-600 dark:text-rose-400' : 'text-muted-foreground',
-                        )}
-                      >
-                        {formatCents(spent, baseCurrency)} / {formatCents(b.amountCents, baseCurrency)}
+                      <span className={cn('font-medium tabular-nums', health.text)}>
+                        {p.over
+                          ? `${formatCents(-p.remainingCents, baseCurrency)} over`
+                          : `${formatCents(p.remainingCents, baseCurrency)} left`}
                       </span>
                     </div>
                     <div className="h-1.5 overflow-hidden rounded-full bg-muted">
                       <div
                         className="h-full rounded-full transition-all"
-                        style={{ width: `${Math.round(p.ratio * 100)}%`, backgroundColor: barColor }}
+                        style={{
+                          width: `${Math.round((p.over ? 1 : p.remainingRatio) * 100)}%`,
+                          backgroundColor: health.bar,
+                        }}
                       />
                     </div>
                   </div>

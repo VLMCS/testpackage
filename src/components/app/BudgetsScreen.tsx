@@ -7,6 +7,7 @@ import { budgetSpentCents, budgetProgress, budgetAppliesToMonth } from '@/lib/se
 import { currentMonthKey, monthLabel } from '@/lib/date';
 import { formatCents } from '@/lib/money';
 import { getCategoryIcon } from '@/lib/icons';
+import { cn } from '@/lib/utils';
 import { ChevronLeft, Plus, Wallet as WalletIcon } from 'lucide-react';
 import type { BudgetAllocation } from '@/types';
 
@@ -60,7 +61,11 @@ export function BudgetsScreen({ onBack }: { onBack: () => void }) {
           const p = budgetProgress(b.amountCents, spent);
           const Icon = cat ? getCategoryIcon(cat.icon) : WalletIcon;
           const tint = cat?.color ?? '#64748b';
-          const barColor = p.over ? '#dc2626' : tint;
+          const health = p.over
+            ? { bar: '#dc2626', text: 'text-rose-600 dark:text-rose-400' }
+            : p.low
+              ? { bar: '#d97706', text: 'text-amber-600 dark:text-amber-400' }
+              : { bar: '#16a34a', text: 'text-emerald-600 dark:text-emerald-400' };
           const applies = budgetAppliesToMonth(b, month);
           return (
             <button
@@ -83,29 +88,29 @@ export function BudgetsScreen({ onBack }: { onBack: () => void }) {
                     {cat ? ` · ${cat.name}` : ''}
                   </span>
                 </span>
-                <span className="shrink-0 text-sm tabular-nums text-muted-foreground">
-                  {formatCents(spent, baseCurrency)} / {formatCents(b.amountCents, baseCurrency)}
+                <span className="shrink-0 text-right">
+                  <span className={cn('block text-base font-semibold tabular-nums', health.text)}>
+                    {p.over
+                      ? `${formatCents(-p.remainingCents, baseCurrency)} over`
+                      : `${formatCents(p.remainingCents, baseCurrency)} left`}
+                  </span>
                 </span>
               </div>
 
+              {/* Depleting bar: full = whole budget available, shrinks as spent. */}
               <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
                 <div
                   className="h-full rounded-full transition-all"
-                  style={{ width: `${Math.round(p.ratio * 100)}%`, backgroundColor: barColor }}
+                  style={{
+                    width: `${Math.round((p.over ? 1 : p.remainingRatio) * 100)}%`,
+                    backgroundColor: health.bar,
+                  }}
                 />
               </div>
 
-              <p className="mt-1.5 text-xs">
-                {p.over ? (
-                  <span className="font-medium text-rose-600 dark:text-rose-400">
-                    {formatCents(-p.remainingCents, baseCurrency)} over
-                  </span>
-                ) : (
-                  <span className="text-muted-foreground">
-                    {formatCents(p.remainingCents, baseCurrency)} left
-                  </span>
-                )}
-                {!applies && <span className="text-muted-foreground"> · not active this month</span>}
+              <p className="mt-1.5 text-xs text-muted-foreground">
+                {formatCents(spent, baseCurrency)} of {formatCents(b.amountCents, baseCurrency)} spent
+                {!applies && <span> · not active this month</span>}
               </p>
             </button>
           );

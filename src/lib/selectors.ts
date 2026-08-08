@@ -188,16 +188,34 @@ export interface BudgetProgress {
   spentCents: number;
   limitCents: number;
   remainingCents: number; // negative when over budget
-  /** 0–1 for the bar; caps at 1 even when over budget. */
+  /** Spent as a fraction of the limit, capped at 1. */
   ratio: number;
-  over: boolean;
+  /** Remaining as a fraction of the limit (0–1) — the "money left" bar width. */
+  remainingRatio: number;
+  over: boolean; // spent more than the limit
+  low: boolean; // not over, but little left (≤20%)
 }
 
-/** Progress of a budget given its limit and the amount already spent. */
+/**
+ * Progress of a budget framed around what's LEFT (a budget is something to stay
+ * under, not a gauge to fill). `remainingRatio` drives a depleting bar; `low`
+ * flags when you're running out.
+ */
 export function budgetProgress(limitCents: number, spentCents: number): BudgetProgress {
   const remainingCents = limitCents - spentCents;
   const ratio = limitCents > 0 ? Math.min(1, spentCents / limitCents) : spentCents > 0 ? 1 : 0;
-  return { spentCents, limitCents, remainingCents, ratio, over: spentCents > limitCents };
+  const remainingRatio =
+    limitCents > 0 ? Math.min(1, Math.max(0, remainingCents / limitCents)) : spentCents > 0 ? 0 : 1;
+  const over = spentCents > limitCents;
+  return {
+    spentCents,
+    limitCents,
+    remainingCents,
+    ratio,
+    remainingRatio,
+    over,
+    low: !over && remainingRatio <= 0.2,
+  };
 }
 
 /**
