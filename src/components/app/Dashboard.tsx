@@ -14,7 +14,7 @@ import { getCategoryIcon } from '@/lib/icons';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { TransactionList } from '@/components/transactions/TransactionList';
-import { ArrowDownRight, ArrowUpRight, CalendarDays, ChevronRight, PiggyBank, Trophy } from 'lucide-react';
+import { CalendarDays, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export function Dashboard({
@@ -94,7 +94,7 @@ export function Dashboard({
               Manage <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
-          <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
+          <div className="grid grid-cols-2 gap-2">
             {myWallets.map((w) => {
               const Icon = getCategoryIcon(w.icon);
               return (
@@ -102,17 +102,17 @@ export function Dashboard({
                   key={w.id}
                   type="button"
                   onClick={onOpenWallets}
-                  className="flex shrink-0 items-center gap-2 rounded-xl border bg-card p-3 text-left shadow-sm transition-colors hover:bg-accent"
+                  className="flex items-center gap-2 rounded-xl border bg-card p-3 text-left shadow-sm transition-colors hover:bg-accent"
                 >
                   <span
-                    className="flex h-8 w-8 items-center justify-center rounded-lg text-white"
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white"
                     style={{ backgroundColor: w.color }}
                   >
                     <Icon className="h-4 w-4" />
                   </span>
                   <span className="min-w-0">
-                    <span className="block text-xs text-muted-foreground">{w.name}</span>
-                    <span className="block text-sm font-semibold tabular-nums">
+                    <span className="block truncate text-xs text-muted-foreground">{w.name}</span>
+                    <span className="block truncate text-sm font-semibold tabular-nums">
                       {formatCents(walletBalanceCents(w, transactions, transfers), baseCurrency)}
                     </span>
                   </span>
@@ -123,41 +123,39 @@ export function Dashboard({
         </div>
       )}
 
-      <div>
-        <div className="mb-2 flex items-center justify-between px-1">
-          <p className="text-sm font-medium text-muted-foreground">{monthLabel(month)}</p>
-          <Button variant="ghost" size="sm" onClick={onInsights}>
-            Insights <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <StatCard
-            label="Income"
-            value={formatCents(totals.incomeCents, baseCurrency)}
-            icon={<ArrowUpRight className="h-4 w-4" />}
-            tone="emerald"
-          />
-          <StatCard
-            label="Spending"
-            value={formatCents(totals.expenseCents, baseCurrency)}
-            icon={<ArrowDownRight className="h-4 w-4" />}
-            tone="rose"
-          />
-          <StatCard
-            label="Saved"
-            value={formatCents(totals.savedCents, baseCurrency)}
-            icon={<PiggyBank className="h-4 w-4" />}
-            tone={totals.savedCents >= 0 ? 'emerald' : 'rose'}
-          />
-          <StatCard
-            label="Top category"
-            value={top ? top.name : '—'}
-            sub={top ? formatCents(top.cents, baseCurrency) : undefined}
-            icon={<Trophy className="h-4 w-4" />}
-            tone="amber"
-          />
-        </div>
-      </div>
+      <Card>
+        <CardContent className="space-y-3 py-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium text-muted-foreground">{monthLabel(month)}</p>
+            <Button variant="ghost" size="sm" className="-mr-2 h-auto py-0" onClick={onInsights}>
+              Insights <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <MonthStat
+              label="Income"
+              value={formatCents(totals.incomeCents, baseCurrency)}
+              tone="emerald"
+            />
+            <MonthStat
+              label="Spending"
+              value={formatCents(totals.expenseCents, baseCurrency)}
+              tone="rose"
+            />
+            <MonthStat
+              label="Saved"
+              value={formatCents(totals.savedCents, baseCurrency)}
+              tone={totals.savedCents >= 0 ? 'emerald' : 'rose'}
+            />
+          </div>
+          {top && (
+            <p className="border-t pt-2 text-xs text-muted-foreground">
+              Top category: <span className="font-medium text-foreground">{top.name}</span> ·{' '}
+              {formatCents(top.cents, baseCurrency)}
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="space-y-2">
         <div className="flex items-center justify-between px-1">
@@ -177,35 +175,23 @@ export function Dashboard({
   );
 }
 
-function StatCard({
+function MonthStat({
   label,
   value,
-  sub,
-  icon,
   tone,
 }: {
   label: string;
   value: string;
-  sub?: string;
-  icon: React.ReactNode;
-  tone: 'emerald' | 'rose' | 'amber';
+  tone: 'emerald' | 'rose';
 }) {
-  const toneClasses = {
-    emerald: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300',
-    rose: 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300',
-    amber: 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300',
-  }[tone];
-
+  const toneClass =
+    tone === 'emerald'
+      ? 'text-emerald-600 dark:text-emerald-400'
+      : 'text-rose-600 dark:text-rose-400';
   return (
-    <Card>
-      <CardContent className="space-y-1 py-4">
-        <span className={cn('flex h-7 w-7 items-center justify-center rounded-full', toneClasses)}>
-          {icon}
-        </span>
-        <p className="pt-1 text-xs text-muted-foreground">{label}</p>
-        <p className="truncate text-lg font-semibold tracking-tight">{value}</p>
-        {sub && <p className="truncate text-xs text-muted-foreground">{sub}</p>}
-      </CardContent>
-    </Card>
+    <div className="min-w-0">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className={cn('truncate text-base font-semibold tracking-tight', toneClass)}>{value}</p>
+    </div>
   );
 }
