@@ -2,13 +2,12 @@ import { useMemo, useState } from 'react';
 import { useSession } from '@/hooks/useSession';
 import { useData } from '@/hooks/useData';
 import { BudgetEditorDialog } from '@/components/budgets/BudgetEditorDialog';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { spendingByCategory, budgetProgress } from '@/lib/selectors';
+import { budgetSpentCents, budgetProgress, budgetAppliesToMonth } from '@/lib/selectors';
 import { currentMonthKey, monthLabel } from '@/lib/date';
 import { formatCents } from '@/lib/money';
 import { getCategoryIcon } from '@/lib/icons';
-import { ChevronLeft, Plus } from 'lucide-react';
+import { ChevronLeft, Plus, Wallet as WalletIcon } from 'lucide-react';
 import type { BudgetAllocation } from '@/types';
 
 export function BudgetsScreen({ onBack }: { onBack: () => void }) {
@@ -21,35 +20,21 @@ export function BudgetsScreen({ onBack }: { onBack: () => void }) {
   const month = currentMonthKey();
 
   const mine = useMemo(() => budgets.filter((b) => b.accountId === accId), [budgets, accId]);
-  const myCategories = useMemo(
-    () => categories.filter((c) => c.accountId === accId),
+  const catById = useMemo(
+    () => new Map(categories.filter((c) => c.accountId === accId).map((c) => [c.id, c])),
     [categories, accId],
   );
-  const catById = useMemo(() => new Map(myCategories.map((c) => [c.id, c])), [myCategories]);
-  const spendMap = useMemo(
-    () => spendingByCategory(transactions, accId, month),
-    [transactions, accId, month],
+  const expenseCategories = useMemo(
+    () => categories.filter((c) => c.accountId === accId && c.type === 'expense'),
+    [categories, accId],
   );
-
-  // Only expense categories, and (for a new budget) those not already budgeted.
-  const budgetedIds = new Set(mine.map((b) => b.categoryId));
-  const availableCategories = myCategories.filter(
-    (c) => c.type === 'expense' && (!budgetedIds.has(c.id) || c.id === editing?.categoryId),
-  );
-
-  const totals = useMemo(() => {
-    let limit = 0;
-    let spent = 0;
-    for (const b of mine) {
-      limit += b.amountCents;
-      spent += spendMap[b.categoryId] ?? 0;
-    }
-    return { limit, spent };
-  }, [mine, spendMap]);
 
   if (!activeAccount || !workspaceId) return null;
 
   const open = editing !== null || adding;
+  // The month a budget's spending is measured in: this month for recurring, its
+  // own month for one-time budgets.
+  const budgetMonth = (b: BudgetAllocation) => (b.recurring ? month : b.monthKey ?? month);
 
   return (
     <div className="space-y-5">
@@ -60,37 +45,23 @@ export function BudgetsScreen({ onBack }: { onBack: () => void }) {
         <h1 className="text-xl font-bold tracking-tight">Budgets</h1>
       </div>
 
-      {mine.length > 0 && (
-        <Card>
-          <CardContent className="py-4">
-            <div className="flex items-center justify-between">
-              <p className="text-xs text-muted-foreground">{monthLabel(month)} · spent of budget</p>
-            </div>
-            <p className="text-2xl font-bold tracking-tight">
-              {formatCents(totals.spent, baseCurrency)}{' '}
-              <span className="text-base font-medium text-muted-foreground">
-                / {formatCents(totals.limit, baseCurrency)}
-              </span>
-            </p>
-          </CardContent>
-        </Card>
-      )}
-
       <div className="space-y-3">
         {mine.length === 0 && (
           <p className="px-1 text-sm text-muted-foreground">
-            No budgets yet. Set a monthly limit on a category like Food / Drinks to keep spending in
-            check.
+            No budgets yet. Create a named limit like "Groceries" or "Fun money", then assign
+            expenses to it as you log them.
           </p>
         )}
 
         {mine.map((b) => {
-          const cat = catById.get(b.categoryId);
-          if (!cat) return null; // category was deleted — skip
-          const spent = spendMap[b.categoryId] ?? 0;
+          const cat = b.categoryId ? catById.get(b.categoryId) : undefined;
+          const bMonth = budgetMonth(b);
+          const spent = budgetSpentCents(transactions, b.id, bMonth);
           const p = budgetProgress(b.amountCents, spent);
-          const Icon = getCategoryIcon(cat.icon);
-          const barColor = p.over ? '#dc2626' : cat.color;
+          const Icon = cat ? getCategoryIcon(cat.icon) : WalletIcon;
+          const tint = cat?.color ?? '#64748b';
+          const barColor = p.over ? '#dc2626' : tint;
+          const applies = budgetAppliesToMonth(b, month);
           return (
             <button
               key={b.id}
@@ -101,11 +72,17 @@ export function BudgetsScreen({ onBack }: { onBack: () => void }) {
               <div className="flex items-center gap-3">
                 <span
                   className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white"
-                  style={{ backgroundColor: cat.color }}
+                  style={{ backgroundColor: tint }}
                 >
                   <Icon className="h-4 w-4" />
                 </span>
-                <span className="min-w-0 flex-1 font-medium">{cat.name}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-medium">{b.name}</span>
+                  <span className="block text-xs text-muted-foreground">
+                    {b.recurring ? 'Every month' : `${monthLabel(bMonth)} only`}
+                    {cat ? ` · ${cat.name}` : ''}
+                  </span>
+                </span>
                 <span className="shrink-0 text-sm tabular-nums text-muted-foreground">
                   {formatCents(spent, baseCurrency)} / {formatCents(b.amountCents, baseCurrency)}
                 </span>
@@ -121,13 +98,14 @@ export function BudgetsScreen({ onBack }: { onBack: () => void }) {
               <p className="mt-1.5 text-xs">
                 {p.over ? (
                   <span className="font-medium text-rose-600 dark:text-rose-400">
-                    {formatCents(-p.remainingCents, baseCurrency)} over budget
+                    {formatCents(-p.remainingCents, baseCurrency)} over
                   </span>
                 ) : (
                   <span className="text-muted-foreground">
-                    {formatCents(p.remainingCents, baseCurrency)} left this month
+                    {formatCents(p.remainingCents, baseCurrency)} left
                   </span>
                 )}
+                {!applies && <span className="text-muted-foreground"> · not active this month</span>}
               </p>
             </button>
           );
@@ -144,8 +122,8 @@ export function BudgetsScreen({ onBack }: { onBack: () => void }) {
       </div>
 
       <p className="px-1 text-xs text-muted-foreground">
-        Spending counts each category's tracked expenses this month. Not-tracked transactions are
-        excluded.
+        A budget's spending is the expenses you assign to it (choose a budget when adding an
+        expense). Recurring budgets reset every month.
       </p>
 
       <BudgetEditorDialog
@@ -159,7 +137,7 @@ export function BudgetsScreen({ onBack }: { onBack: () => void }) {
         workspaceId={workspaceId}
         accountId={accId}
         editing={editing}
-        availableCategories={availableCategories}
+        expenseCategories={expenseCategories}
       />
     </div>
   );

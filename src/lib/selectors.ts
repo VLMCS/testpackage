@@ -1,4 +1,11 @@
-import type { Account, Category, Transaction, Transfer, Wallet } from '@/types';
+import type {
+  Account,
+  BudgetAllocation,
+  Category,
+  Transaction,
+  Transfer,
+  Wallet,
+} from '@/types';
 import { monthKeyOf } from './date';
 
 export interface MonthTotals {
@@ -186,11 +193,39 @@ export interface BudgetProgress {
   over: boolean;
 }
 
-/** Progress of a monthly budget given its limit and the amount already spent. */
+/** Progress of a budget given its limit and the amount already spent. */
 export function budgetProgress(limitCents: number, spentCents: number): BudgetProgress {
   const remainingCents = limitCents - spentCents;
   const ratio = limitCents > 0 ? Math.min(1, spentCents / limitCents) : spentCents > 0 ? 1 : 0;
   return { spentCents, limitCents, remainingCents, ratio, over: spentCents > limitCents };
+}
+
+/**
+ * Whether a budget's limit applies to a given month. Recurring budgets apply to
+ * every month; a one-time budget applies only to its own monthKey.
+ */
+export function budgetAppliesToMonth(budget: BudgetAllocation, monthKey: string): boolean {
+  return budget.recurring ? true : budget.monthKey === monthKey;
+}
+
+/**
+ * Amount spent against a budget in a given month: the sum of tracked EXPENSES
+ * explicitly assigned to it (Transaction.budgetId) and dated in that month.
+ * notTracked expenses are excluded, matching other spending metrics.
+ */
+export function budgetSpentCents(
+  txns: Transaction[],
+  budgetId: string,
+  monthKey: string,
+): number {
+  let sum = 0;
+  for (const t of txns) {
+    if (t.budgetId !== budgetId || t.type !== 'expense') continue;
+    if (t.notTracked) continue;
+    if (monthKeyOf(t.date) !== monthKey) continue;
+    sum += t.amountCents;
+  }
+  return sum;
 }
 
 /** Tracked expense total for one account on a single ISO day (yyyy-MM-dd). */

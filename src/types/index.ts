@@ -115,6 +115,9 @@ export type Transaction = {
   // transactions are "unassigned" and simply don't count toward any wallet
   // balance. The account-level balance is unaffected either way.
   walletId?: string | null;
+  // The budget (envelope) this expense is drawn from, if any. Optional — an
+  // expense need not belong to a budget. Only meaningful for expenses.
+  budgetId?: string | null;
   // Set when this expense was materialized by ticking a recurring bill. Lets the
   // Recurring tab know which template/month a transaction belongs to (and undo it).
   recurringTemplateId?: string | null;
@@ -126,15 +129,19 @@ export type Transaction = {
   notTracked?: boolean;
 };
 
-// A monthly spending limit for one expense category ("envelope" budgeting),
-// owned by one account. Progress is measured against that category's tracked
-// spending in the current month (see budgetProgress in src/lib/selectors.ts).
-// Additive: its own subcollection, one budget per category.
+// A named spending envelope owned by one account. Expenses are assigned to a
+// budget explicitly (Transaction.budgetId), and progress is the sum of those
+// assigned expenses for the relevant month (see selectors.ts). A category is
+// optional — used only for an icon/label. A budget is either recurring (a fresh
+// limit every month) or one-time (applies to a single month via monthKey).
 export type BudgetAllocation = {
   id: string;
   accountId: AccountId;
-  categoryId: string;
-  amountCents: number; // monthly limit
+  name: string;
+  categoryId?: string | null; // optional label/icon source
+  amountCents: number; // the limit
+  recurring: boolean; // true = every month; false = one specific month
+  monthKey?: string | null; // 'yyyy-MM' when !recurring
   active: boolean;
   createdAt: number;
 };

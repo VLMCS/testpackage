@@ -8,8 +8,9 @@ import {
   walletBalanceCents,
   netWorthCents,
   spentOnDayCents,
-  spendingByCategory,
+  budgetSpentCents,
   budgetProgress,
+  budgetAppliesToMonth,
 } from '@/lib/selectors';
 import { formatCents } from '@/lib/money';
 import { getCategoryIcon } from '@/lib/icons';
@@ -39,13 +40,14 @@ export function Dashboard({
     () => wallets.filter((w) => w.accountId === accId && w.active),
     [wallets, accId],
   );
+  // Active budgets that apply to the current month (recurring, or one-time for
+  // this month).
   const myBudgets = useMemo(
-    () => budgets.filter((b) => b.accountId === accId && b.active),
-    [budgets, accId],
-  );
-  const spendMap = useMemo(
-    () => spendingByCategory(transactions, accId, month),
-    [transactions, accId, month],
+    () =>
+      budgets.filter(
+        (b) => b.accountId === accId && b.active && budgetAppliesToMonth(b, month),
+      ),
+    [budgets, accId, month],
   );
 
   const totals = useMemo(
@@ -180,15 +182,15 @@ export function Dashboard({
           <Card>
             <CardContent className="space-y-3 py-4">
               {myBudgets.map((b) => {
-                const cat = myCats.find((c) => c.id === b.categoryId);
-                if (!cat) return null;
-                const spent = spendMap[b.categoryId] ?? 0;
+                const cat = b.categoryId ? myCats.find((c) => c.id === b.categoryId) : undefined;
+                const spent = budgetSpentCents(transactions, b.id, month);
                 const p = budgetProgress(b.amountCents, spent);
-                const barColor = p.over ? '#dc2626' : cat.color;
+                const tint = cat?.color ?? '#64748b';
+                const barColor = p.over ? '#dc2626' : tint;
                 return (
                   <div key={b.id}>
                     <div className="mb-1 flex items-center justify-between text-xs">
-                      <span className="font-medium">{cat.name}</span>
+                      <span className="font-medium">{b.name}</span>
                       <span
                         className={cn(
                           'tabular-nums',

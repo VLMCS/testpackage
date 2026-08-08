@@ -48,7 +48,7 @@ const BudgetsScreen = lazy(() =>
 
 export function MainApp() {
   const { activeAccount, accounts, workspaceId } = useSession();
-  const { categories, transactions, recurringTemplates, wallets, loading, pendingWrites } =
+  const { categories, transactions, recurringTemplates, wallets, budgets, loading, pendingWrites } =
     useData();
   const online = useOnlineStatus();
   const [tab, setTab] = useState<Tab>('home');
@@ -132,6 +132,7 @@ export function MainApp() {
 
   const myCategories = categories.filter((c) => c.accountId === activeAccount.id);
   const myWallets = wallets.filter((w) => w.accountId === activeAccount.id && w.active);
+  const myBudgets = budgets.filter((b) => b.accountId === activeAccount.id && b.active);
 
   const fallback = (
     <div className="flex justify-center py-24">
@@ -208,6 +209,7 @@ export function MainApp() {
         accountId={activeAccount.id}
         categories={myCategories}
         wallets={myWallets}
+        budgets={myBudgets}
       />
 
       <Dialog open={exitOpen} onOpenChange={setExitOpen}>

@@ -21,7 +21,7 @@ import type { Transaction } from '@/types';
 
 export function TransactionsScreen() {
   const { activeAccount, baseCurrency, workspaceId } = useSession();
-  const { transactions, categories, wallets } = useData();
+  const { transactions, categories, wallets, budgets } = useData();
   const [editing, setEditing] = useState<Transaction | null>(null);
   const [calOpen, setCalOpen] = useState(false);
   const [calMonth, setCalMonth] = useState(currentMonthKey());
@@ -39,6 +39,10 @@ export function TransactionsScreen() {
   const myWallets = useMemo(
     () => wallets.filter((w) => w.accountId === accId && w.active),
     [wallets, accId],
+  );
+  const myBudgets = useMemo(
+    () => budgets.filter((b) => b.accountId === accId && b.active),
+    [budgets, accId],
   );
 
   // Balance after each transaction, derived from the account's full history so it
@@ -156,6 +160,7 @@ export function TransactionsScreen() {
         accountId={editing?.accountId ?? activeAccount.id}
         categories={myCats}
         wallets={myWallets}
+        budgets={myBudgets}
         editing={editing}
       />
 
