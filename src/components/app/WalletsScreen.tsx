@@ -3,6 +3,7 @@ import { useSession } from '@/hooks/useSession';
 import { useData } from '@/hooks/useData';
 import { WalletEditorDialog } from '@/components/wallets/WalletEditorDialog';
 import { TransferDialog } from '@/components/wallets/TransferDialog';
+import { LogInterestDialog } from '@/components/wallets/LogInterestDialog';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { walletBalanceCents, unassignedBalanceCents } from '@/lib/selectors';
@@ -16,14 +17,19 @@ import type { Transfer, Wallet } from '@/types';
 
 export function WalletsScreen({ onBack }: { onBack: () => void }) {
   const { activeAccount, baseCurrency, workspaceId } = useSession();
-  const { wallets, transactions, transfers } = useData();
+  const { wallets, transactions, transfers, categories } = useData();
   const [editing, setEditing] = useState<Wallet | null>(null);
   const [adding, setAdding] = useState(false);
   const [transferOpen, setTransferOpen] = useState(false);
   const [editingTransfer, setEditingTransfer] = useState<Transfer | null>(null);
+  const [loggingInterest, setLoggingInterest] = useState<Wallet | null>(null);
 
   const accId = activeAccount?.id ?? '';
   const mine = useMemo(() => wallets.filter((w) => w.accountId === accId), [wallets, accId]);
+  const incomeCategories = useMemo(
+    () => categories.filter((c) => c.accountId === accId && c.type === 'income'),
+    [categories, accId],
+  );
   const myTransfers = useMemo(
     () => transfers.filter((t) => t.accountId === accId),
     [transfers, accId],
@@ -85,30 +91,42 @@ export function WalletsScreen({ onBack }: { onBack: () => void }) {
           const bal = walletBalanceCents(w, transactions, transfers);
           const proj = w.interest ? projectInterest(bal, w.interest) : null;
           return (
-            <button
-              key={w.id}
-              type="button"
-              onClick={() => setEditing(w)}
-              className="flex w-full items-center gap-3 rounded-xl border bg-card p-3 text-left shadow-sm transition-colors hover:bg-accent"
-            >
-              <span
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white"
-                style={{ backgroundImage: gradientFromHex(w.color) }}
+            <div key={w.id} className="overflow-hidden rounded-xl border bg-card shadow-sm">
+              <button
+                type="button"
+                onClick={() => setEditing(w)}
+                className="flex w-full items-center gap-3 p-3 text-left transition-colors hover:bg-accent"
               >
-                <Icon className="h-5 w-5" />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block font-medium">{w.name}</span>
-                {proj && (
-                  <span className="block text-xs text-emerald-600 dark:text-emerald-400">
-                    +{formatCents(proj.perPeriodCents, baseCurrency)}/{FREQUENCY_LABEL[w.interest!.frequency]} interest
-                  </span>
-                )}
-              </span>
-              <span className="shrink-0 font-semibold tabular-nums">
-                {formatCents(bal, baseCurrency)}
-              </span>
-            </button>
+                <span
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white"
+                  style={{ backgroundImage: gradientFromHex(w.color) }}
+                >
+                  <Icon className="h-5 w-5" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block font-medium">{w.name}</span>
+                  {proj && (
+                    <span className="block text-xs text-emerald-600 dark:text-emerald-400">
+                      +{formatCents(proj.perPeriodCents, baseCurrency)}/
+                      {FREQUENCY_LABEL[w.interest!.frequency]} interest
+                    </span>
+                  )}
+                </span>
+                <span className="shrink-0 font-semibold tabular-nums">
+                  {formatCents(bal, baseCurrency)}
+                </span>
+              </button>
+              {proj && (
+                <button
+                  type="button"
+                  onClick={() => setLoggingInterest(w)}
+                  className="flex w-full items-center justify-center gap-1.5 border-t py-2 text-sm font-medium text-emerald-600 transition-colors hover:bg-accent dark:text-emerald-400"
+                >
+                  <Plus className="h-4 w-4" />
+                  Log {formatCents(proj.perPeriodCents, baseCurrency)} interest
+                </button>
+              )}
+            </div>
           );
         })}
 
@@ -182,6 +200,20 @@ export function WalletsScreen({ onBack }: { onBack: () => void }) {
         accountId={accId}
         wallets={mine.filter((w) => w.active)}
         editing={editingTransfer}
+      />
+
+      <LogInterestDialog
+        open={loggingInterest !== null}
+        onOpenChange={(o) => {
+          if (!o) setLoggingInterest(null);
+        }}
+        workspaceId={workspaceId}
+        wallet={loggingInterest}
+        balanceCents={
+          loggingInterest ? walletBalanceCents(loggingInterest, transactions, transfers) : 0
+        }
+        incomeCategories={incomeCategories}
+        baseCurrency={baseCurrency}
       />
     </div>
   );
