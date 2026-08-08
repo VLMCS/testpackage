@@ -126,6 +126,19 @@ export type Transaction = {
   notTracked?: boolean;
 };
 
+// A monthly spending limit for one expense category ("envelope" budgeting),
+// owned by one account. Progress is measured against that category's tracked
+// spending in the current month (see budgetProgress in src/lib/selectors.ts).
+// Additive: its own subcollection, one budget per category.
+export type BudgetAllocation = {
+  id: string;
+  accountId: AccountId;
+  categoryId: string;
+  amountCents: number; // monthly limit
+  active: boolean;
+  createdAt: number;
+};
+
 // A savings goal ("Finance Plan") — Emergency Fund, House, Vacation, … owned by
 // one account. Progress can either mirror a linked wallet's balance (walletId
 // set) or be tracked manually (savedCents). Fully additive: its own subcollection.

@@ -42,6 +42,9 @@ const WalletsScreen = lazy(() =>
 const PlansScreen = lazy(() =>
   import('./PlansScreen').then((m) => ({ default: m.PlansScreen })),
 );
+const BudgetsScreen = lazy(() =>
+  import('./BudgetsScreen').then((m) => ({ default: m.BudgetsScreen })),
+);
 
 export function MainApp() {
   const { activeAccount, accounts, workspaceId } = useSession();
@@ -173,6 +176,7 @@ export function MainApp() {
                 onViewAll={() => setTab('activity')}
                 onInsights={() => setTab('analytics')}
                 onOpenWallets={() => openSubScreen('wallets')}
+                onOpenBudgets={() => openSubScreen('budgets')}
               />
             )}
             {tab === 'activity' && <TransactionsScreen />}
@@ -184,11 +188,13 @@ export function MainApp() {
                 onOpenSettings={() => openSubScreen('settings')}
                 onOpenWallets={() => openSubScreen('wallets')}
                 onOpenPlans={() => openSubScreen('plans')}
+                onOpenBudgets={() => openSubScreen('budgets')}
               />
             )}
             {tab === 'settings' && <SettingsScreen onBack={() => setTab(parentTab)} />}
             {tab === 'wallets' && <WalletsScreen onBack={() => setTab(parentTab)} />}
             {tab === 'plans' && <PlansScreen onBack={() => setTab(parentTab)} />}
+            {tab === 'budgets' && <BudgetsScreen onBack={() => setTab(parentTab)} />}
           </Suspense>
         )}
       </main>

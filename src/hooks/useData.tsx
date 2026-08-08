@@ -5,7 +5,9 @@ import { subscribeTemplates } from '@/lib/recurring';
 import { subscribeWallets } from '@/lib/wallets';
 import { subscribeTransfers } from '@/lib/transfers';
 import { subscribePlans } from '@/lib/plans';
+import { subscribeBudgets } from '@/lib/budgets';
 import type {
+  BudgetAllocation,
   Category,
   FinancePlan,
   RecurringTemplate,
@@ -21,6 +23,7 @@ interface DataContextValue {
   wallets: Wallet[];
   transfers: Transfer[];
   financePlans: FinancePlan[];
+  budgets: BudgetAllocation[];
   loading: boolean;
   /** True while local changes are still being synced to the server. */
   pendingWrites: boolean;
@@ -47,18 +50,21 @@ export function DataProvider({
   const [wallets, setWallets] = useState<Wallet[]>([]);
   const [transfers, setTransfers] = useState<Transfer[]>([]);
   const [financePlans, setFinancePlans] = useState<FinancePlan[]>([]);
+  const [budgets, setBudgets] = useState<BudgetAllocation[]>([]);
   const [catLoaded, setCatLoaded] = useState(false);
   const [txLoaded, setTxLoaded] = useState(false);
   const [recLoaded, setRecLoaded] = useState(false);
   const [walLoaded, setWalLoaded] = useState(false);
   const [trfLoaded, setTrfLoaded] = useState(false);
   const [planLoaded, setPlanLoaded] = useState(false);
+  const [budgetLoaded, setBudgetLoaded] = useState(false);
   const [pendingCat, setPendingCat] = useState(false);
   const [pendingTx, setPendingTx] = useState(false);
   const [pendingRec, setPendingRec] = useState(false);
   const [pendingWal, setPendingWal] = useState(false);
   const [pendingTrf, setPendingTrf] = useState(false);
   const [pendingPlan, setPendingPlan] = useState(false);
+  const [pendingBudget, setPendingBudget] = useState(false);
 
   useEffect(() => {
     const unsubCats = subscribeCategories(workspaceId, (c, pending) => {
@@ -91,6 +97,11 @@ export function DataProvider({
       setPlanLoaded(true);
       setPendingPlan(pending);
     });
+    const unsubBudget = subscribeBudgets(workspaceId, (b, pending) => {
+      setBudgets(b);
+      setBudgetLoaded(true);
+      setPendingBudget(pending);
+    });
     return () => {
       unsubCats();
       unsubTx();
@@ -98,6 +109,7 @@ export function DataProvider({
       unsubWal();
       unsubTrf();
       unsubPlan();
+      unsubBudget();
     };
   }, [workspaceId]);
 
@@ -110,9 +122,24 @@ export function DataProvider({
         wallets,
         transfers,
         financePlans,
-        loading: !(catLoaded && txLoaded && recLoaded && walLoaded && trfLoaded && planLoaded),
+        budgets,
+        loading: !(
+          catLoaded &&
+          txLoaded &&
+          recLoaded &&
+          walLoaded &&
+          trfLoaded &&
+          planLoaded &&
+          budgetLoaded
+        ),
         pendingWrites:
-          pendingCat || pendingTx || pendingRec || pendingWal || pendingTrf || pendingPlan,
+          pendingCat ||
+          pendingTx ||
+          pendingRec ||
+          pendingWal ||
+          pendingTrf ||
+          pendingPlan ||
+          pendingBudget,
       }}
     >
       {children}

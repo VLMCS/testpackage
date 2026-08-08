@@ -177,6 +177,22 @@ export function netWorthCents(
   return total;
 }
 
+export interface BudgetProgress {
+  spentCents: number;
+  limitCents: number;
+  remainingCents: number; // negative when over budget
+  /** 0–1 for the bar; caps at 1 even when over budget. */
+  ratio: number;
+  over: boolean;
+}
+
+/** Progress of a monthly budget given its limit and the amount already spent. */
+export function budgetProgress(limitCents: number, spentCents: number): BudgetProgress {
+  const remainingCents = limitCents - spentCents;
+  const ratio = limitCents > 0 ? Math.min(1, spentCents / limitCents) : spentCents > 0 ? 1 : 0;
+  return { spentCents, limitCents, remainingCents, ratio, over: spentCents > limitCents };
+}
+
 /** Tracked expense total for one account on a single ISO day (yyyy-MM-dd). */
 export function spentOnDayCents(
   txns: Transaction[],

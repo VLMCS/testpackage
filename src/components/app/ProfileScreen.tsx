@@ -8,19 +8,30 @@ import { Button } from '@/components/ui/button';
 import { netWorthCents } from '@/lib/selectors';
 import { formatCents } from '@/lib/money';
 import { gradientFromHex } from '@/lib/theme';
-import { ChevronRight, Cog, Pencil, RefreshCw, Settings, Target, Wallet } from 'lucide-react';
+import {
+  ChevronRight,
+  Cog,
+  Pencil,
+  PieChart,
+  RefreshCw,
+  Settings,
+  Target,
+  Wallet,
+} from 'lucide-react';
 
 export function ProfileScreen({
   onOpenSettings,
   onOpenWallets,
   onOpenPlans,
+  onOpenBudgets,
 }: {
   onOpenSettings: () => void;
   onOpenWallets: () => void;
   onOpenPlans: () => void;
+  onOpenBudgets: () => void;
 }) {
   const { activeAccount, baseCurrency, workspaceId, lock } = useSession();
-  const { transactions, wallets, transfers, financePlans } = useData();
+  const { transactions, wallets, transfers, financePlans, budgets } = useData();
   const [editing, setEditing] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
 
@@ -77,6 +88,21 @@ export function ProfileScreen({
         </span>
         <span className="flex items-center gap-2 text-sm text-muted-foreground">
           {wallets.filter((w) => w.accountId === activeAccount.id).length}
+          <ChevronRight className="h-5 w-5" />
+        </span>
+      </button>
+
+      <button
+        type="button"
+        onClick={onOpenBudgets}
+        className="flex w-full items-center justify-between rounded-xl border bg-card p-4 text-left shadow-sm transition-colors hover:bg-accent"
+      >
+        <span className="flex items-center gap-3">
+          <PieChart className="h-5 w-5 text-muted-foreground" />
+          <span className="font-medium">Budgets</span>
+        </span>
+        <span className="flex items-center gap-2 text-sm text-muted-foreground">
+          {budgets.filter((b) => b.accountId === activeAccount.id).length}
           <ChevronRight className="h-5 w-5" />
         </span>
       </button>

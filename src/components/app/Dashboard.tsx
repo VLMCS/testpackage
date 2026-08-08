@@ -8,6 +8,8 @@ import {
   walletBalanceCents,
   netWorthCents,
   spentOnDayCents,
+  spendingByCategory,
+  budgetProgress,
 } from '@/lib/selectors';
 import { formatCents } from '@/lib/money';
 import { getCategoryIcon } from '@/lib/icons';
@@ -21,19 +23,29 @@ export function Dashboard({
   onViewAll,
   onInsights,
   onOpenWallets,
+  onOpenBudgets,
 }: {
   onViewAll: () => void;
   onInsights: () => void;
   onOpenWallets: () => void;
+  onOpenBudgets: () => void;
 }) {
   const { activeAccount, baseCurrency } = useSession();
-  const { transactions, categories, wallets, transfers } = useData();
+  const { transactions, categories, wallets, transfers, budgets } = useData();
   const month = currentMonthKey();
   const accId = activeAccount?.id ?? '';
 
   const myWallets = useMemo(
     () => wallets.filter((w) => w.accountId === accId && w.active),
     [wallets, accId],
+  );
+  const myBudgets = useMemo(
+    () => budgets.filter((b) => b.accountId === accId && b.active),
+    [budgets, accId],
+  );
+  const spendMap = useMemo(
+    () => spendingByCategory(transactions, accId, month),
+    [transactions, accId, month],
   );
 
   const totals = useMemo(
@@ -156,6 +168,49 @@ export function Dashboard({
           )}
         </CardContent>
       </Card>
+
+      {myBudgets.length > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between px-1">
+            <p className="text-sm font-medium text-muted-foreground">Budgets</p>
+            <Button variant="ghost" size="sm" className="-mr-2 h-auto py-0" onClick={onOpenBudgets}>
+              Manage <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+          <Card>
+            <CardContent className="space-y-3 py-4">
+              {myBudgets.map((b) => {
+                const cat = myCats.find((c) => c.id === b.categoryId);
+                if (!cat) return null;
+                const spent = spendMap[b.categoryId] ?? 0;
+                const p = budgetProgress(b.amountCents, spent);
+                const barColor = p.over ? '#dc2626' : cat.color;
+                return (
+                  <div key={b.id}>
+                    <div className="mb-1 flex items-center justify-between text-xs">
+                      <span className="font-medium">{cat.name}</span>
+                      <span
+                        className={cn(
+                          'tabular-nums',
+                          p.over ? 'text-rose-600 dark:text-rose-400' : 'text-muted-foreground',
+                        )}
+                      >
+                        {formatCents(spent, baseCurrency)} / {formatCents(b.amountCents, baseCurrency)}
+                      </span>
+                    </div>
+                    <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-full rounded-full transition-all"
+                        style={{ width: `${Math.round(p.ratio * 100)}%`, backgroundColor: barColor }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       <div className="space-y-2">
         <div className="flex items-center justify-between px-1">

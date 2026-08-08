@@ -241,7 +241,14 @@ export async function deleteAccount(workspaceId: string, accountId: string): Pro
   const { db } = getFirebase();
 
   const owned: ReturnType<typeof doc>[] = [doc(db, WORKSPACES, workspaceId, 'accounts', accountId)];
-  for (const sub of ['categories', 'transactions', 'recurring_templates', 'wallets', 'transfers']) {
+  for (const sub of [
+    'categories',
+    'transactions',
+    'recurring_templates',
+    'wallets',
+    'transfers',
+    'budget_allocations',
+  ]) {
     const snap = await getDocs(
       query(collection(db, WORKSPACES, workspaceId, sub), where('accountId', '==', accountId)),
     );
