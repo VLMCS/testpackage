@@ -27,6 +27,7 @@ export function TransactionsScreen() {
   const [calMonth, setCalMonth] = useState(currentMonthKey());
   const [selection, setSelection] = useState<DaySelection>({ start: null, end: null });
   const [catFilter, setCatFilter] = useState<Set<string>>(new Set());
+  const [walletFilter, setWalletFilter] = useState<Set<string>>(new Set());
   const [filterOpen, setFilterOpen] = useState(false);
 
   const accId = activeAccount?.id ?? '';
@@ -58,8 +59,9 @@ export function TransactionsScreen() {
     if (start && end) list = list.filter((t) => t.date >= start && t.date <= end);
     else if (start) list = list.filter((t) => t.date === start);
     if (catFilter.size > 0) list = list.filter((t) => catFilter.has(t.categoryId));
+    if (walletFilter.size > 0) list = list.filter((t) => t.walletId != null && walletFilter.has(t.walletId));
     return list;
-  }, [own, selection, catFilter]);
+  }, [own, selection, catFilter, walletFilter]);
 
   if (!activeAccount || !workspaceId) return null;
 
@@ -80,13 +82,23 @@ export function TransactionsScreen() {
     });
   }
 
+  function toggleWallet(id: string) {
+    setWalletFilter((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
   const dateLabel = selection.start
     ? selection.end
       ? `${friendlyDate(selection.start)} – ${friendlyDate(selection.end)}`
       : friendlyDate(selection.start)
     : null;
 
-  const hasFilters = dateLabel !== null || catFilter.size > 0;
+  const hasFilters = dateLabel !== null || catFilter.size > 0 || walletFilter.size > 0;
+  const hasChipFilters = catFilter.size > 0 || walletFilter.size > 0;
 
   return (
     <div className="space-y-4">
@@ -94,10 +106,10 @@ export function TransactionsScreen() {
         <h1 className="text-xl font-bold tracking-tight">Activity</h1>
         <div className="flex items-center gap-2">
           <Button
-            variant={catFilter.size > 0 ? 'default' : 'outline'}
+            variant={hasChipFilters ? 'default' : 'outline'}
             size="icon"
             onClick={() => setFilterOpen(true)}
-            aria-label="Filter by category"
+            aria-label="Filter by category or wallet"
           >
             <ListFilter className="h-5 w-5" />
           </Button>
@@ -141,6 +153,17 @@ export function TransactionsScreen() {
               />
             );
           })}
+          {[...walletFilter].map((id) => {
+            const w = myWallets.find((x) => x.id === id);
+            return (
+              <FilterChip
+                key={id}
+                label={w?.name ?? 'Wallet'}
+                color={w?.color}
+                onClear={() => toggleWallet(id)}
+              />
+            );
+          })}
         </div>
       )}
 
@@ -167,27 +190,64 @@ export function TransactionsScreen() {
       <Dialog open={filterOpen} onOpenChange={setFilterOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Filter by category</DialogTitle>
+            <DialogTitle>Filter</DialogTitle>
             <DialogDescription>
-              Tap categories to show only those. None selected shows everything.
+              Tap to show only those. None selected shows everything.
             </DialogDescription>
           </DialogHeader>
-          <div className="max-h-[55vh] overflow-y-auto pr-1">
-            <CategoryGrid>
-              {myCats
-                .filter((c) => c.type !== 'recurring')
-                .map((c) => (
-                <CategoryCard
-                  key={c.id}
-                  category={c}
-                  selected={catFilter.has(c.id)}
-                  onClick={() => toggleCat(c.id)}
-                />
-              ))}
-            </CategoryGrid>
+          <div className="max-h-[55vh] space-y-4 overflow-y-auto pr-1">
+            {myWallets.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-muted-foreground">Wallets</p>
+                <div className="flex flex-wrap gap-2">
+                  {myWallets.map((w) => {
+                    const selected = walletFilter.has(w.id);
+                    return (
+                      <button
+                        key={w.id}
+                        type="button"
+                        onClick={() => toggleWallet(w.id)}
+                        className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${
+                          selected ? 'border-transparent text-white' : 'bg-background text-foreground'
+                        }`}
+                        style={selected ? { backgroundColor: w.color } : undefined}
+                      >
+                        <span
+                          className="h-2 w-2 rounded-full"
+                          style={{ backgroundColor: selected ? '#fff' : w.color }}
+                        />
+                        {w.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-muted-foreground">Categories</p>
+              <CategoryGrid>
+                {myCats
+                  .filter((c) => c.type !== 'recurring')
+                  .map((c) => (
+                    <CategoryCard
+                      key={c.id}
+                      category={c}
+                      selected={catFilter.has(c.id)}
+                      onClick={() => toggleCat(c.id)}
+                    />
+                  ))}
+              </CategoryGrid>
+            </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="ghost" className="flex-1" onClick={() => setCatFilter(new Set())}>
+            <Button
+              variant="ghost"
+              className="flex-1"
+              onClick={() => {
+                setCatFilter(new Set());
+                setWalletFilter(new Set());
+              }}
+            >
               Clear
             </Button>
             <Button className="flex-1" onClick={() => setFilterOpen(false)}>
